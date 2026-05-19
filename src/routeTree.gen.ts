@@ -9,38 +9,85 @@
 // Additionally, you should also exclude this file from your linter and/or formatter to prevent it from being checked or modified.
 
 import { Route as rootRouteImport } from './routes/__root'
+import { Route as ShellRouteImport } from './routes/_shell'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ShellTrainingRouteImport } from './routes/_shell.training'
+import { Route as ShellMacrosRouteImport } from './routes/_shell.macros'
+import { Route as ShellCheckinRouteImport } from './routes/_shell.checkin'
 
+const ShellRoute = ShellRouteImport.update({
+  id: '/_shell',
+  getParentRoute: () => rootRouteImport,
+} as any)
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShellTrainingRoute = ShellTrainingRouteImport.update({
+  id: '/training',
+  path: '/training',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellMacrosRoute = ShellMacrosRouteImport.update({
+  id: '/macros',
+  path: '/macros',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellCheckinRoute = ShellCheckinRouteImport.update({
+  id: '/checkin',
+  path: '/checkin',
+  getParentRoute: () => ShellRoute,
+} as any)
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/checkin': typeof ShellCheckinRoute
+  '/macros': typeof ShellMacrosRoute
+  '/training': typeof ShellTrainingRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/checkin': typeof ShellCheckinRoute
+  '/macros': typeof ShellMacrosRoute
+  '/training': typeof ShellTrainingRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/_shell': typeof ShellRouteWithChildren
+  '/_shell/checkin': typeof ShellCheckinRoute
+  '/_shell/macros': typeof ShellMacrosRoute
+  '/_shell/training': typeof ShellTrainingRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/'
+  fullPaths: '/' | '/checkin' | '/macros' | '/training'
   fileRoutesByTo: FileRoutesByTo
-  to: '/'
-  id: '__root__' | '/'
+  to: '/' | '/checkin' | '/macros' | '/training'
+  id:
+    | '__root__'
+    | '/'
+    | '/_shell'
+    | '/_shell/checkin'
+    | '/_shell/macros'
+    | '/_shell/training'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  ShellRoute: typeof ShellRouteWithChildren
 }
 
 declare module '@tanstack/react-router' {
   interface FileRoutesByPath {
+    '/_shell': {
+      id: '/_shell'
+      path: ''
+      fullPath: '/'
+      preLoaderRoute: typeof ShellRouteImport
+      parentRoute: typeof rootRouteImport
+    }
     '/': {
       id: '/'
       path: '/'
@@ -48,12 +95,58 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_shell/training': {
+      id: '/_shell/training'
+      path: '/training'
+      fullPath: '/training'
+      preLoaderRoute: typeof ShellTrainingRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/macros': {
+      id: '/_shell/macros'
+      path: '/macros'
+      fullPath: '/macros'
+      preLoaderRoute: typeof ShellMacrosRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/checkin': {
+      id: '/_shell/checkin'
+      path: '/checkin'
+      fullPath: '/checkin'
+      preLoaderRoute: typeof ShellCheckinRouteImport
+      parentRoute: typeof ShellRoute
+    }
   }
 }
 
+interface ShellRouteChildren {
+  ShellCheckinRoute: typeof ShellCheckinRoute
+  ShellMacrosRoute: typeof ShellMacrosRoute
+  ShellTrainingRoute: typeof ShellTrainingRoute
+}
+
+const ShellRouteChildren: ShellRouteChildren = {
+  ShellCheckinRoute: ShellCheckinRoute,
+  ShellMacrosRoute: ShellMacrosRoute,
+  ShellTrainingRoute: ShellTrainingRoute,
+}
+
+const ShellRouteWithChildren = ShellRoute._addFileChildren(ShellRouteChildren)
+
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  ShellRoute: ShellRouteWithChildren,
 }
 export const routeTree = rootRouteImport
   ._addFileChildren(rootRouteChildren)
   ._addFileTypes<FileRouteTypes>()
+
+import type { getRouter } from './router.tsx'
+import type { startInstance } from './start.ts'
+declare module '@tanstack/react-start' {
+  interface Register {
+    ssr: true
+    router: Awaited<ReturnType<typeof getRouter>>
+    config: Awaited<ReturnType<typeof startInstance.getOptions>>
+  }
+}
