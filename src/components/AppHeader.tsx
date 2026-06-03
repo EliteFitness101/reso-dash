@@ -1,4 +1,5 @@
 import { userProfile } from "@/lib/user-context";
+import { AdminToggle } from "./AdminToggle";
 
 export function AppHeader() {
   const progress = (userProfile.currentWeek / userProfile.programWeeks) * 100;
@@ -39,11 +40,14 @@ export function AppHeader() {
           </div>
         </div>
       </div>
-      <div className="mt-3 flex items-center gap-2 text-[11px] text-muted-foreground">
-        <span className="h-1 w-1 rounded-full bg-gold animate-pulse" />
-        <span className="uppercase tracking-wider">{userProfile.role}</span>
-        <span className="text-border">·</span>
-        <span className="uppercase tracking-wider">{userProfile.goal}</span>
+      <div className="mt-3 flex items-center justify-between gap-2 text-[11px] text-muted-foreground">
+        <div className="flex min-w-0 items-center gap-2">
+          <span className="h-1 w-1 shrink-0 rounded-full bg-gold animate-pulse" />
+          <span className="truncate uppercase tracking-wider">{userProfile.role}</span>
+          <span className="text-border">·</span>
+          <span className="truncate uppercase tracking-wider">{userProfile.goal}</span>
+        </div>
+        <AdminToggle />
       </div>
     </header>
   );
