@@ -1,11 +1,14 @@
 import { Link, useLocation } from "@tanstack/react-router";
-import { Utensils, Dumbbell, LineChart } from "lucide-react";
+import { Utensils, Dumbbell, LineChart, CreditCard, Sparkles } from "lucide-react";
 
 const tabs = [
   { to: "/macros", label: "Macros", Icon: Utensils },
-  { to: "/training", label: "Training", Icon: Dumbbell },
-  { to: "/checkin", label: "Check-In", Icon: LineChart },
+  { to: "/training", label: "Train", Icon: Dumbbell },
+  { to: "/checkin", label: "Log", Icon: LineChart },
+  { to: "/checkout", label: "Pay", Icon: CreditCard },
+  { to: "/upsells", label: "Boost", Icon: Sparkles },
 ] as const;
+
 
 export function BottomTabBar() {
   const { pathname } = useLocation();
