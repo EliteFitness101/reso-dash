@@ -11,8 +11,11 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ShellRouteImport } from './routes/_shell'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as ShellUpsellsRouteImport } from './routes/_shell.upsells'
 import { Route as ShellTrainingRouteImport } from './routes/_shell.training'
+import { Route as ShellOnboardingRouteImport } from './routes/_shell.onboarding'
 import { Route as ShellMacrosRouteImport } from './routes/_shell.macros'
+import { Route as ShellCheckoutRouteImport } from './routes/_shell.checkout'
 import { Route as ShellCheckinRouteImport } from './routes/_shell.checkin'
 
 const ShellRoute = ShellRouteImport.update({
@@ -24,14 +27,29 @@ const IndexRoute = IndexRouteImport.update({
   path: '/',
   getParentRoute: () => rootRouteImport,
 } as any)
+const ShellUpsellsRoute = ShellUpsellsRouteImport.update({
+  id: '/upsells',
+  path: '/upsells',
+  getParentRoute: () => ShellRoute,
+} as any)
 const ShellTrainingRoute = ShellTrainingRouteImport.update({
   id: '/training',
   path: '/training',
   getParentRoute: () => ShellRoute,
 } as any)
+const ShellOnboardingRoute = ShellOnboardingRouteImport.update({
+  id: '/onboarding',
+  path: '/onboarding',
+  getParentRoute: () => ShellRoute,
+} as any)
 const ShellMacrosRoute = ShellMacrosRouteImport.update({
   id: '/macros',
   path: '/macros',
+  getParentRoute: () => ShellRoute,
+} as any)
+const ShellCheckoutRoute = ShellCheckoutRouteImport.update({
+  id: '/checkout',
+  path: '/checkout',
   getParentRoute: () => ShellRoute,
 } as any)
 const ShellCheckinRoute = ShellCheckinRouteImport.update({
@@ -43,35 +61,61 @@ const ShellCheckinRoute = ShellCheckinRouteImport.update({
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
   '/checkin': typeof ShellCheckinRoute
+  '/checkout': typeof ShellCheckoutRoute
   '/macros': typeof ShellMacrosRoute
+  '/onboarding': typeof ShellOnboardingRoute
   '/training': typeof ShellTrainingRoute
+  '/upsells': typeof ShellUpsellsRoute
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
   '/checkin': typeof ShellCheckinRoute
+  '/checkout': typeof ShellCheckoutRoute
   '/macros': typeof ShellMacrosRoute
+  '/onboarding': typeof ShellOnboardingRoute
   '/training': typeof ShellTrainingRoute
+  '/upsells': typeof ShellUpsellsRoute
 }
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
   '/_shell': typeof ShellRouteWithChildren
   '/_shell/checkin': typeof ShellCheckinRoute
+  '/_shell/checkout': typeof ShellCheckoutRoute
   '/_shell/macros': typeof ShellMacrosRoute
+  '/_shell/onboarding': typeof ShellOnboardingRoute
   '/_shell/training': typeof ShellTrainingRoute
+  '/_shell/upsells': typeof ShellUpsellsRoute
 }
 export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
-  fullPaths: '/' | '/checkin' | '/macros' | '/training'
+  fullPaths:
+    | '/'
+    | '/checkin'
+    | '/checkout'
+    | '/macros'
+    | '/onboarding'
+    | '/training'
+    | '/upsells'
   fileRoutesByTo: FileRoutesByTo
-  to: '/' | '/checkin' | '/macros' | '/training'
+  to:
+    | '/'
+    | '/checkin'
+    | '/checkout'
+    | '/macros'
+    | '/onboarding'
+    | '/training'
+    | '/upsells'
   id:
     | '__root__'
     | '/'
     | '/_shell'
     | '/_shell/checkin'
+    | '/_shell/checkout'
     | '/_shell/macros'
+    | '/_shell/onboarding'
     | '/_shell/training'
+    | '/_shell/upsells'
   fileRoutesById: FileRoutesById
 }
 export interface RootRouteChildren {
@@ -95,6 +139,13 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof IndexRouteImport
       parentRoute: typeof rootRouteImport
     }
+    '/_shell/upsells': {
+      id: '/_shell/upsells'
+      path: '/upsells'
+      fullPath: '/upsells'
+      preLoaderRoute: typeof ShellUpsellsRouteImport
+      parentRoute: typeof ShellRoute
+    }
     '/_shell/training': {
       id: '/_shell/training'
       path: '/training'
@@ -102,11 +153,25 @@ declare module '@tanstack/react-router' {
       preLoaderRoute: typeof ShellTrainingRouteImport
       parentRoute: typeof ShellRoute
     }
+    '/_shell/onboarding': {
+      id: '/_shell/onboarding'
+      path: '/onboarding'
+      fullPath: '/onboarding'
+      preLoaderRoute: typeof ShellOnboardingRouteImport
+      parentRoute: typeof ShellRoute
+    }
     '/_shell/macros': {
       id: '/_shell/macros'
       path: '/macros'
       fullPath: '/macros'
       preLoaderRoute: typeof ShellMacrosRouteImport
+      parentRoute: typeof ShellRoute
+    }
+    '/_shell/checkout': {
+      id: '/_shell/checkout'
+      path: '/checkout'
+      fullPath: '/checkout'
+      preLoaderRoute: typeof ShellCheckoutRouteImport
       parentRoute: typeof ShellRoute
     }
     '/_shell/checkin': {
@@ -121,14 +186,20 @@ declare module '@tanstack/react-router' {
 
 interface ShellRouteChildren {
   ShellCheckinRoute: typeof ShellCheckinRoute
+  ShellCheckoutRoute: typeof ShellCheckoutRoute
   ShellMacrosRoute: typeof ShellMacrosRoute
+  ShellOnboardingRoute: typeof ShellOnboardingRoute
   ShellTrainingRoute: typeof ShellTrainingRoute
+  ShellUpsellsRoute: typeof ShellUpsellsRoute
 }
 
 const ShellRouteChildren: ShellRouteChildren = {
   ShellCheckinRoute: ShellCheckinRoute,
+  ShellCheckoutRoute: ShellCheckoutRoute,
   ShellMacrosRoute: ShellMacrosRoute,
+  ShellOnboardingRoute: ShellOnboardingRoute,
   ShellTrainingRoute: ShellTrainingRoute,
+  ShellUpsellsRoute: ShellUpsellsRoute,
 }
 
 const ShellRouteWithChildren = ShellRoute._addFileChildren(ShellRouteChildren)
