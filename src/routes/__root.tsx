@@ -117,6 +117,7 @@ function RootShell({ children }: { children: React.ReactNode }) {
 }
 
 import { AuthProvider } from "@/lib/auth-context";
+import { ProfileProvider } from "@/lib/profile-store";
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
@@ -124,8 +125,11 @@ function RootComponent() {
   return (
     <QueryClientProvider client={queryClient}>
       <AuthProvider>
-        <Outlet />
+        <ProfileProvider>
+          <Outlet />
+        </ProfileProvider>
       </AuthProvider>
     </QueryClientProvider>
   );
 }
+
