@@ -20,3 +20,13 @@ const errorMiddleware = createMiddleware().server(async ({ next }) => {
 export const startInstance = createStart(() => ({
   requestMiddleware: [errorMiddleware],
 }));
+
+// Progressive enhancement: service workers are a browser capability, not a
+// server concern. Keep registration client-only and fail silently if blocked.
+if (typeof window !== "undefined" && "serviceWorker" in navigator) {
+  window.addEventListener("load", () => {
+    navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error) => {
+      console.warn("ResoFit PWA service worker registration failed", error);
+    });
+  });
+}
