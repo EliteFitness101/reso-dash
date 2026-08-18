@@ -1,4 +1,4 @@
-export type ChatB2KActionType = "MOVE" | "EAT" | "RECOVER" | "LEARN" | "UPGRADE";
+export type ChatB2KActionType = "MOVE" | "EAT" | "RECOVER" | "LEARN" | "UPGRADE" | "ANCESTRAL_ALIGNMENT";
 
 export interface ChatB2KProductMatch {
   id: string;
@@ -19,6 +19,7 @@ export interface ChatB2KAction {
   xpReward: number;
   durationOrPortion: string;
   ctaText: string;
+  ancestralInsight?: string;
   productMatch?: ChatB2KProductMatch;
 }
 
@@ -29,6 +30,8 @@ export interface ChatB2KStateInput {
   budgetTier?: string | null;
   equipmentAccess?: string | null;
   lifeStage?: string | null;
+  culturalContext?: string | null;
+  ancestralAlignmentEnabled?: boolean;
 }
 
 export interface ChatB2KOrchestration {
@@ -39,6 +42,9 @@ export interface ChatB2KOrchestration {
 /**
  * ChatB2K™ deterministic recommendation layer.
  * Server-side XP remains authoritative; this engine only selects the experience.
+ *
+ * v1.1.2 keeps adaptive/ancestral presentation opt-in and member-context driven.
+ * It does not infer ancestry, identity, health status, or cultural lineage.
  */
 export function rankRecommendations(state: ChatB2KStateInput): ChatB2KAction[] {
   const equipment = state.equipmentAccess && state.equipmentAccess !== "minimal"
@@ -59,7 +65,7 @@ export function rankRecommendations(state: ChatB2KStateInput): ChatB2KAction[] {
       id: "act-eat-01",
       type: "EAT",
       title: "High-Protein Local Meal Protocol",
-      subtitle: "A practical Nigerian meal option designed around your current goal and constraints.",
+      subtitle: "A practical meal option designed around your current goal and explicitly provided constraints.",
       xpReward: 30,
       durationOrPortion: "Lunch protocol",
       ctaText: "View Meal Guidance",
@@ -84,6 +90,24 @@ export function rankRecommendations(state: ChatB2KStateInput): ChatB2KAction[] {
     },
   ];
 
+  // Optional culturally contextualized experience. This is member-provided context,
+  // not an inferred ancestry or a claim about historical/biological superiority.
+  if (state.ancestralAlignmentEnabled) {
+    pool.splice(1, 0, {
+      id: "act-cultural-flow-01",
+      type: "ANCESTRAL_ALIGNMENT",
+      title: "Cultural Movement Flow",
+      subtitle: state.culturalContext
+        ? `A movement experience contextualized for ${state.culturalContext}, while preserving your core training objective.`
+        : "A culturally contextualized mobility and movement experience matched to your current objective.",
+      ancestralInsight: "Use cultural context as a source of meaning and engagement—not as a substitute for evidence-based training guidance.",
+      xpReward: 35,
+      durationOrPortion: "10 mins • Mobility",
+      ctaText: "Start Cultural Flow",
+    });
+  }
+
+  // Day 7 commercial boundary: the upgrade is still gated by verified journey state.
   if (state.dayCount >= 7 || state.currentPhase === "day_7_milestone") {
     pool.unshift({
       id: "nba-day7-upgrade",
