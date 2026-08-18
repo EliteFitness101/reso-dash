@@ -8,18 +8,20 @@ import { supabase } from "@/lib/supabase-browser";
 
 export const Route = createFileRoute("/_shell/today")({ component: TodayPage });
 
+type MemberState = {
+  canonical_name: string;
+  tier: "Foundation" | "LuxeGold" | "Sovereign_Elite";
+  day_count: number;
+  xp_total: number;
+  current_phase: string;
+  location: string;
+  primary_objective: string;
+  equipment_access: string;
+};
+
 function TodayPage() {
   const { current } = useProfileStore();
-  const [serverState, setServerState] = useState<{
-    canonical_name: string;
-    tier: "Foundation" | "LuxeGold" | "Sovereign_Elite";
-    day_count: number;
-    xp_total: number;
-    current_phase: string;
-    location: string;
-    primary_objective: string;
-    equipment_access: string;
-  } | null>(null);
+  const [serverState, setServerState] = useState<MemberState | null>(null);
   const [actionBusy, setActionBusy] = useState(false);
   const [actionMessage, setActionMessage] = useState<string | null>(null);
 
@@ -41,11 +43,11 @@ function TodayPage() {
 
       if (cancelled) return;
       if (data) {
-        setServerState(data);
+        setServerState(data as MemberState);
         return;
       }
 
-      if (error && error.code !== "PGRST116") {
+      if (error) {
         console.warn("[ChatB2K] Member state read failed", error);
         return;
       }
@@ -66,7 +68,7 @@ function TodayPage() {
         .select("canonical_name,tier,day_count,xp_total,current_phase,location,primary_objective,equipment_access")
         .single();
 
-      if (!cancelled && !insertError && created) setServerState(created);
+      if (!cancelled && !insertError && created) setServerState(created as MemberState);
     }
 
     void hydrate();
@@ -119,9 +121,10 @@ function TodayPage() {
         return;
       }
 
+      const actionId = nba.id === "nba-daily-move" ? `${nba.id}-${dayCount}` : nba.id;
       const { data, error } = await supabase.rpc("award_member_xp", {
         p_user_id: user.id,
-        p_action_id: nba.id,
+        p_action_id: actionId,
         p_action_type: nba.type,
         p_xp_amount: nba.xpReward,
       });
@@ -136,7 +139,7 @@ function TodayPage() {
         tier: data.tier,
         current_phase: data.day_count >= 7 ? "day_7_milestone" : prev.current_phase,
       } : prev);
-      setActionMessage(`Synced ✓ +${nba.xpReward} XP`);
+      setActionMessage(data.duplicate ? "Already synced ✓" : `Synced ✓ +${nba.xpReward} XP`);
     } catch (error) {
       console.error("[ChatB2K] XP RPC failed", error);
       setActionMessage("Could not sync this action. Your XP was not changed locally.");
