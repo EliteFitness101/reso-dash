@@ -1,0 +1,20 @@
+{
+  "$schema": "https://schema.tauri.app/config/2",
+  "productName": "chatb2k",
+  "version": "1.0.0",
+  "identifier": "fit.resofit.chatb2k",
+  "app": {
+    "security": {
+      "csp": "default-src 'self'; script-src 'self'; style-src 'self' 'unsafe-inline'; img-src 'self' https: data:; connect-src 'self' https://api.resofit.fit wss://api.resofit.fit;",
+      "freezePrototype": true
+    },
+    "windows": [
+      {
+        "title": "chatb2k",
+        "width": 1200,
+        "height": 800,
+        "dragAndDropEnabled": false
+      }
+    ]
+  }
+}
