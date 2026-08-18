@@ -29,12 +29,15 @@ BEGIN
     END IF;
 
     -- Canonical server-side reward table. Client p_xp_amount is never trusted.
-    v_reward := CASE p_action_id
-        WHEN 'nba-daily-move-001' THEN 50
-        WHEN 'nba-day7-upgrade' THEN 250
-        WHEN 'nba-solar-001' THEN 120
-        ELSE NULL
-    END;
+    IF p_action_id LIKE 'nba-daily-move-%' THEN
+        v_reward := 50;
+    ELSE
+        v_reward := CASE p_action_id
+            WHEN 'nba-day7-upgrade' THEN 250
+            WHEN 'nba-solar-001' THEN 120
+            ELSE NULL
+        END;
+    END IF;
 
     IF v_reward IS NULL THEN
         RAISE EXCEPTION 'Unknown ChatB2K action: %', p_action_id;
