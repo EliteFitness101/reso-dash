@@ -1,5 +1,5 @@
 import { Share2, Trophy, Upload } from "lucide-react";
-import { useMemo, useState } from "react";
+import { useEffect, useState } from "react";
 
 const XP_KEY = "resofit_xp_v2";
 const COMPLETED_KEY = "resofit_xp_milestones_v2";
@@ -45,7 +45,7 @@ export function XPProgress() {
   const tier2 = state.xp >= TIER_2_XP;
   const progress = Math.min(100, Math.round((state.xp / TIER_2_XP) * 100));
 
-  useMemo(() => {
+  useEffect(() => {
     const refresh = () => setState(readState());
     window.addEventListener("resofit:xp", refresh);
     return () => window.removeEventListener("resofit:xp", refresh);
