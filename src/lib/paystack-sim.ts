@@ -1,14 +1,15 @@
-// Frontend-only Paystack simulation. No real charges, no network.
-// Mirrors the shape of Paystack init → redirect → verify → webhook callback
-// so the wiring can be swapped to a real backend later without UI changes.
+// Canonical ResoFit Paystack client adapter.
+// Payment authority remains in the canonical Supabase Edge Functions.
 
-export const PAYSTACK_PUBLIC_KEY = "pk_test_resoflex_simulated_xxxxxxxxxxxxxx";
-export const CALLBACK_URL = "https://joy-funnel-ai.lovable.app/status";
+export const PAYSTACK_PUBLIC_KEY = "pk_live_canonical_server_side";
+export const PAYSTACK_INIT_URL =
+  "https://vbqjvmnhdtdhmeeudqnn.supabase.co/functions/v1/paystack-init";
+export const CALLBACK_URL = "https://dashboard.resofit.fit/payment/callback";
 
 export interface PaystackTx {
   reference: string;
-  rsid: string; // ResoFlex Subscriber ID
-  amount: number; // in kobo
+  rsid: string;
+  amount: number;
   currency: "NGN";
   email: string;
   product: string;
@@ -16,9 +17,9 @@ export interface PaystackTx {
   status: "success" | "pending" | "failed";
   paidAt: string;
   channel: "card" | "bank" | "ussd";
+  authorization_url?: string;
 }
 
-const TX_KEY = "resoflex.tx.log.v1";
 const RSID_KEY = "resoflex.rsid.v1";
 
 export function getOrCreateRSID(email: string): string {
@@ -35,70 +36,52 @@ export function getOrCreateRSID(email: string): string {
   }
 }
 
-export function newReference(): string {
-  const ts = Date.now().toString(36).toUpperCase();
-  const rnd = Math.random().toString(36).slice(2, 8).toUpperCase();
-  return `PSK_${ts}_${rnd}`;
-}
-
-export function recordTx(tx: PaystackTx) {
-  try {
-    const raw = localStorage.getItem(TX_KEY);
-    const log: PaystackTx[] = raw ? JSON.parse(raw) : [];
-    log.unshift(tx);
-    localStorage.setItem(TX_KEY, JSON.stringify(log.slice(0, 50)));
-  } catch {}
-}
-
-export function getTxLog(): PaystackTx[] {
-  try {
-    const raw = localStorage.getItem(TX_KEY);
-    return raw ? JSON.parse(raw) : [];
-  } catch {
-    return [];
-  }
-}
-
-// Simulated init → returns an authorization "URL" we'd normally redirect to.
-// In simulation, we resolve in-place after a short delay (network feel).
 export async function initTransaction(input: {
   email: string;
-  amount: number; // kobo
+  amount: number;
   product: string;
   productId: string;
+  name?: string;
+  phone?: string;
 }): Promise<PaystackTx> {
-  const reference = newReference();
-  const rsid = getOrCreateRSID(input.email);
-  // Simulate network latency
-  await new Promise((r) => setTimeout(r, 850));
-  const tx: PaystackTx = {
+  const response = await fetch(PAYSTACK_INIT_URL, {
+    method: "POST",
+    headers: { "Content-Type": "application/json" },
+    body: JSON.stringify({
+      email: input.email,
+      amount: input.amount,
+      product: input.product,
+      productId: input.productId,
+      name: input.name,
+      phone: input.phone,
+      rsid: getOrCreateRSID(input.email),
+    }),
+  });
+
+  const body = await response.json().catch(() => ({}));
+  if (!response.ok || !body?.status || !body?.data?.authorization_url) {
+    throw new Error(body?.error ?? body?.message ?? `Paystack initialization failed (${response.status})`);
+  }
+
+  const reference = body.data.reference;
+  return {
     reference,
-    rsid,
+    rsid: body.data.rsid ?? getOrCreateRSID(input.email),
     amount: input.amount,
     currency: "NGN",
     email: input.email,
     product: input.product,
     productId: input.productId,
-    status: "success",
+    status: "pending",
     paidAt: new Date().toISOString(),
     channel: "card",
+    authorization_url: body.data.authorization_url,
   };
-  recordTx(tx);
-  // Simulated webhook fan-out (would POST to /api/public/paystack-webhook)
-  try {
-    window.dispatchEvent(new CustomEvent("paystack:webhook", { detail: tx }));
-  } catch {}
-  return tx;
 }
 
-export function buildCallbackUrl(tx: PaystackTx): string {
+export function buildCallbackUrl(tx: Pick<PaystackTx, "reference">): string {
   const u = new URL(CALLBACK_URL);
   u.searchParams.set("reference", tx.reference);
-  u.searchParams.set("rsid", tx.rsid);
-  u.searchParams.set("amount", String(tx.amount));
-  u.searchParams.set("currency", tx.currency);
-  u.searchParams.set("product", tx.productId);
-  u.searchParams.set("status", tx.status);
   return u.toString();
 }
 
