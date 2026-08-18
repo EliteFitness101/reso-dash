@@ -1,4 +1,5 @@
 import { useCallback, useEffect, useRef } from 'react';
+import { useStreamBuffer } from './useStreamBuffer';
 
 export interface StreamOptions {
   url: string;
@@ -12,23 +13,26 @@ export interface StreamOptions {
 /**
  * Client-side ChatB2K™ stream transport.
  *
- * Responsibilities are deliberately limited to transport concerns:
- * - cancels an active request before starting a new one
- * - streams response bytes through TextDecoder
- * - flushes the decoder at EOF
- * - suppresses expected AbortError callbacks
- * - cleans the controller on completion/unmount
- *
+ * Network transport remains separate from business logic. Incoming bytes are
+ * decoded losslessly and handed to useStreamBuffer so React receives at most
+ * one UI update per animation frame instead of one update per network chunk.
  * The server remains authoritative for authentication, orchestration,
- * persistence, XP and any commerce/payment state.
+ * persistence, XP and commerce/payment state.
  */
 export function useChatStream() {
   const abortControllerRef = useRef<AbortController | null>(null);
+  const onChunkRef = useRef<StreamOptions['onChunk']>(() => undefined);
+
+  const { push, flushNow, clear } = useStreamBuffer({
+    onFlush: (chunk) => onChunkRef.current(chunk),
+  });
 
   const stopStream = useCallback(() => {
     abortControllerRef.current?.abort();
     abortControllerRef.current = null;
-  }, []);
+    onChunkRef.current = () => undefined;
+    clear();
+  }, [clear]);
 
   const startStream = useCallback(async ({
     url,
@@ -39,6 +43,7 @@ export function useChatStream() {
     onError,
   }: StreamOptions) => {
     stopStream();
+    onChunkRef.current = onChunk;
 
     const controller = new AbortController();
     abortControllerRef.current = controller;
@@ -79,11 +84,12 @@ export function useChatStream() {
           if (done) break;
 
           const chunk = decoder.decode(value, { stream: true });
-          if (chunk) onChunk(chunk);
+          if (chunk) push(chunk);
         }
 
         const finalChunk = decoder.decode();
-        if (finalChunk) onChunk(finalChunk);
+        if (finalChunk) push(finalChunk);
+        flushNow();
       } finally {
         reader.releaseLock();
       }
@@ -101,9 +107,10 @@ export function useChatStream() {
     } finally {
       if (abortControllerRef.current === controller) {
         abortControllerRef.current = null;
+        onChunkRef.current = () => undefined;
       }
     }
-  }, [stopStream]);
+  }, [flushNow, push, stopStream]);
 
   useEffect(() => stopStream, [stopStream]);
 
