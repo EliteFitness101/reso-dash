@@ -20,10 +20,9 @@ DECLARE
     v_new_xp INT;
     v_new_day INT;
     v_current_day INT;
-    v_current_phase journey_phase;
     v_new_tier member_tier;
     v_reward INT;
-    v_inserted BOOLEAN := false;
+    v_rows INT := 0;
 BEGIN
     IF (SELECT auth.uid()) IS NULL OR (SELECT auth.uid()) <> p_user_id THEN
         RAISE EXCEPTION 'Unauthorized XP Award Request';
@@ -45,17 +44,16 @@ BEGIN
         RAISE EXCEPTION 'Unsupported ChatB2K action type: %', p_action_type;
     END IF;
 
-    -- Idempotency: a completed action cannot award XP twice.
     INSERT INTO public.resofit_action_telemetry
       (user_id, action_id, action_type, xp_awarded, event_type)
     VALUES
       (p_user_id, p_action_id, p_action_type, v_reward, 'COMPLETE')
     ON CONFLICT (user_id, action_id, event_type) DO NOTHING;
 
-    GET DIAGNOSTICS v_inserted = ROW_COUNT;
+    GET DIAGNOSTICS v_rows = ROW_COUNT;
 
-    SELECT day_count, current_phase
-      INTO v_current_day, v_current_phase
+    SELECT day_count
+      INTO v_current_day
       FROM public.resofit_member_states
      WHERE user_id = p_user_id
      FOR UPDATE;
@@ -64,13 +62,18 @@ BEGIN
         RAISE EXCEPTION 'Member state not found';
     END IF;
 
-    IF NOT v_inserted THEN
+    IF v_rows = 0 THEN
+        SELECT xp_total, day_count, tier
+          INTO v_new_xp, v_new_day, v_new_tier
+          FROM public.resofit_member_states
+         WHERE user_id = p_user_id;
+
         RETURN jsonb_build_object(
             'success', true,
             'duplicate', true,
-            'new_xp', (SELECT xp_total FROM public.resofit_member_states WHERE user_id = p_user_id),
-            'day_count', v_current_day,
-            'tier', (SELECT tier FROM public.resofit_member_states WHERE user_id = p_user_id)
+            'new_xp', v_new_xp,
+            'day_count', v_new_day,
+            'tier', v_new_tier
         );
     END IF;
 
@@ -104,9 +107,16 @@ $$;
 REVOKE ALL ON FUNCTION public.award_member_xp(UUID, VARCHAR, VARCHAR, INT) FROM PUBLIC;
 GRANT EXECUTE ON FUNCTION public.award_member_xp(UUID, VARCHAR, VARCHAR, INT) TO authenticated;
 
--- Prevent authenticated users from modifying telemetry/state directly beyond
--- the RLS model; the XP function remains the authoritative mutation path.
 REVOKE ALL ON TABLE public.resofit_member_states FROM anon;
+REVOKE ALL ON TABLE public.resofit_member_states FROM authenticated;
 REVOKE ALL ON TABLE public.resofit_action_telemetry FROM anon;
-GRANT SELECT, INSERT, UPDATE ON public.resofit_member_states TO authenticated;
-GRANT SELECT, INSERT ON public.resofit_action_telemetry TO authenticated;
+REVOKE ALL ON TABLE public.resofit_action_telemetry FROM authenticated;
+
+GRANT SELECT, INSERT ON TABLE public.resofit_member_states TO authenticated;
+GRANT SELECT ON TABLE public.resofit_action_telemetry TO authenticated;
+
+DROP POLICY IF EXISTS "Member state update policy" ON public.resofit_member_states;
+CREATE POLICY "Member state update policy" ON public.resofit_member_states
+  FOR UPDATE TO authenticated
+  USING ((SELECT auth.uid()) = user_id)
+  WITH CHECK ((SELECT auth.uid()) = user_id);
