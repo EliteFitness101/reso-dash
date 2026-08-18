@@ -55,7 +55,7 @@ export function evaluateNextBestAction(state: ChatB2KStateInput): ChatB2KAction 
     : "your bodyweight";
 
   return {
-    id: "nba-daily-move-001",
+    id: "nba-daily-move",
     type: "MOVE",
     title: "12-Minute Full-Body Reset",
     subtitle: `A practical home session using ${equipment}, matched to your current journey.`,
