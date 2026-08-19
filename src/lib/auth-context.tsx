@@ -1,59 +1,83 @@
 import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import type { Session, User } from "@supabase/supabase-js";
+import { supabase } from "@/lib/supabase-browser";
 
 export type AuthRole = "client" | "admin";
 
 interface AuthState {
+  session: Session | null;
+  user: User | null;
+  loading: boolean;
+  email: string;
   role: AuthRole;
   twoFactorVerified: boolean;
-  email: string;
-  setRole: (r: AuthRole) => void;
-  toggleAdmin: () => void;
-  setTwoFactor: (v: boolean) => void;
+  signInWithMagicLink: (email: string) => Promise<{ error: string | null }>;
+  signOut: () => Promise<void>;
 }
 
 const Ctx = createContext<AuthState | null>(null);
-const KEY = "resoflex.auth.v1";
-
-interface Persist {
-  role: AuthRole;
-  twoFactorVerified: boolean;
-}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
-  const [role, setRoleState] = useState<AuthRole>("client");
-  const [twoFactorVerified, setTwoFactorVerified] = useState(true);
+  const [session, setSession] = useState<Session | null>(null);
+  const [loading, setLoading] = useState(true);
 
   useEffect(() => {
-    try {
-      const raw = typeof localStorage !== "undefined" && localStorage.getItem(KEY);
-      if (raw) {
-        const p: Persist = JSON.parse(raw);
-        setRoleState(p.role);
-        setTwoFactorVerified(p.twoFactorVerified);
-      }
-    } catch {}
+    if (!supabase) {
+      setLoading(false);
+      return;
+    }
+
+    supabase.auth.getSession().then(({ data }) => {
+      setSession(data.session);
+      setLoading(false);
+    });
+
+    const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
+      setSession(next);
+      setLoading(false);
+    });
+
+    return () => listener.subscription.unsubscribe();
   }, []);
 
-  useEffect(() => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify({ role, twoFactorVerified }));
-    } catch {}
-  }, [role, twoFactorVerified]);
-
-  const value: AuthState = {
-    role,
-    twoFactorVerified,
-    email: role === "admin" ? "coach.buchi@resofit.fit" : "operator@resoflex.os",
-    setRole: setRoleState,
-    toggleAdmin: () => setRoleState((r) => (r === "admin" ? "client" : "admin")),
-    setTwoFactor: setTwoFactorVerified,
+  const signInWithMagicLink = async (email: string) => {
+    if (!supabase) return { error: "Authentication is not configured." };
+    const normalized = email.trim().toLowerCase();
+    if (!normalized.includes("@")) return { error: "Enter a valid email address." };
+    const { error } = await supabase.auth.signInWithOtp({
+      email: normalized,
+      options: { emailRedirectTo: window.location.origin + "/today" },
+    });
+    return { error: error?.message ?? null };
   };
 
-  return <Ctx.Provider value={value}>{children}</Ctx.Provider>;
+  const signOut = async () => {
+    if (supabase) await supabase.auth.signOut();
+    setSession(null);
+  };
+
+  const role: AuthRole = "client";
+
+  return (
+    <Ctx.Provider
+      value={{
+        session,
+        user: session?.user ?? null,
+        loading,
+        email: session?.user.email ?? "",
+        role,
+        twoFactorVerified: Boolean(session),
+        signInWithMagicLink,
+        signOut,
+      }}
+    >
+      {children}
+    </Ctx.Provider>
+  );
 }
 
 export function useAuth() {
-  const v = useContext(Ctx);
-  if (!v) throw new Error("useAuth must be used inside AuthProvider");
-  return v;
+  const value = useContext(Ctx);
+  if (!value) throw new Error("useAuth must be used inside AuthProvider");
+  return value;
 }
