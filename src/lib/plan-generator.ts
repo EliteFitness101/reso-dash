@@ -57,7 +57,7 @@ export const upsellCatalog = [
     id: "coach-call-30",
     name: "1:1 Coaching Call",
     tagline: "30-min strategy session with Coach Buchi",
-    amount: 25_000_00, // kobo
+    amount: 25_000_00,
     perks: ["Live form review", "Custom block design", "WhatsApp follow-up"],
     badge: "Elite",
   },
@@ -79,8 +79,10 @@ export const upsellCatalog = [
   },
 ] as const;
 
+// Must match a published SKU in the canonical ResoFlex catalog because the
+// production paystack-init function resolves price server-side by SKU.
 export const starterProduct = {
-  id: "resoflex-starter-4wk",
-  name: "ResoFlex OS · 4-Week Recomp",
-  amount: 35_000_00, // ₦35,000
+  id: "RF-DIG-MW-125",
+  name: "Personalized Naija Meal + Workout Reset",
+  amount: 12_500_00,
 } as const;
