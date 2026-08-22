@@ -15,24 +15,25 @@ function CheckoutPage() {
   const [email, setEmail] = useState("");
   const [name, setName] = useState("");
   const [phone, setPhone] = useState("");
+  const [address, setAddress] = useState("");
   const [loading, setLoading] = useState(false);
   const [error, setError] = useState<string | null>(null);
 
   const pay = async () => {
     setError(null);
-    if (!email.includes("@") || name.trim().length < 2) {
-      setError("Enter your full name and a valid email.");
+    if (!email.includes("@") || name.trim().length < 2 || phone.trim().length < 7 || address.trim().length < 5) {
+      setError("Enter your full name, valid email, phone and delivery/access address.");
       return;
     }
     setLoading(true);
     try {
       const tx = await initTransaction({
         email,
-        amount: starterProduct.amount,
         product: starterProduct.name,
         productId: starterProduct.id,
         name,
         phone,
+        address,
       });
 
       upsert({
@@ -76,17 +77,18 @@ function CheckoutPage() {
           </span>
         </div>
         <ul className="mt-3 grid grid-cols-2 gap-2 text-[11px] text-muted-foreground">
-          <li>· Macro engine</li>
-          <li>· Training matrix</li>
-          <li>· Biometric log</li>
-          <li>· Auto-tuned plan</li>
+          <li>· Personalized meal plan</li>
+          <li>· Goal-matched workout</li>
+          <li>· ChatB2K guidance</li>
+          <li>· Digital delivery</li>
         </ul>
       </article>
 
       <section className="glass-card rounded-2xl p-4 space-y-3">
-        <Field label="Full name" value={name} onChange={setName} placeholder="Maria Okafor" />
+        <Field label="Full name" value={name} onChange={setName} placeholder="Your full name" />
         <Field label="Email" value={email} onChange={setEmail} placeholder="you@email.com" type="email" />
         <Field label="Phone" value={phone} onChange={setPhone} placeholder="+234…" type="tel" />
+        <Field label="Address / delivery or access details" value={address} onChange={setAddress} placeholder="Your address or delivery details" />
 
         {error && <p className="text-xs text-destructive">{error}</p>}
 
