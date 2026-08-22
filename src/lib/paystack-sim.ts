@@ -38,36 +38,38 @@ export function getOrCreateRSID(email: string): string {
 
 export async function initTransaction(input: {
   email: string;
-  amount: number;
-  product: string;
   productId: string;
-  name?: string;
-  phone?: string;
+  product: string;
+  name: string;
+  phone: string;
+  address: string;
+  rsid?: string;
+  attribution?: Record<string, string | null>;
 }): Promise<PaystackTx> {
+  const rsid = input.rsid ?? getOrCreateRSID(input.email);
   const response = await fetch(PAYSTACK_INIT_URL, {
     method: "POST",
     headers: { "Content-Type": "application/json" },
     body: JSON.stringify({
+      sku: input.productId,
       email: input.email,
-      amount: input.amount,
-      product: input.product,
-      productId: input.productId,
       name: input.name,
       phone: input.phone,
-      rsid: getOrCreateRSID(input.email),
+      address: input.address,
+      rsid,
+      ...(input.attribution ?? {}),
     }),
   });
 
   const body = await response.json().catch(() => ({}));
-  if (!response.ok || !body?.status || !body?.data?.authorization_url) {
+  if (!response.ok || !body?.authorization_url || !body?.reference) {
     throw new Error(body?.error ?? body?.message ?? `Paystack initialization failed (${response.status})`);
   }
 
-  const reference = body.data.reference;
   return {
-    reference,
-    rsid: body.data.rsid ?? getOrCreateRSID(input.email),
-    amount: input.amount,
+    reference: body.reference,
+    rsid,
+    amount: Number(body.amount_ngn ?? 0) * 100,
     currency: "NGN",
     email: input.email,
     product: input.product,
@@ -75,7 +77,7 @@ export async function initTransaction(input: {
     status: "pending",
     paidAt: new Date().toISOString(),
     channel: "card",
-    authorization_url: body.data.authorization_url,
+    authorization_url: body.authorization_url,
   };
 }
 
