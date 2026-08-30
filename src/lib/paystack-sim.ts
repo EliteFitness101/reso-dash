@@ -4,7 +4,7 @@
 export const PAYSTACK_PUBLIC_KEY = "pk_live_canonical_server_side";
 export const PAYSTACK_INIT_URL =
   "https://vbqjvmnhdtdhmeeudqnn.supabase.co/functions/v1/paystack-init";
-export const CALLBACK_URL = "https://dashboard.resofit.fit/payment/callback";
+export const CALLBACK_URL = "https://reso-dash.vercel.app/payment/callback";
 
 export interface PaystackTx {
   reference: string;
