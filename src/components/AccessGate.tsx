@@ -2,20 +2,30 @@ import { useEffect, useState, type ReactNode } from "react";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase-browser";
 
+const assignedDashboardRoles = new Set(["admin", "moderator", "distributor", "hub", "ambassador", "referrer"]);
+
 export function AccessGate({ children }: { children: ReactNode }) {
-  const { session, user, loading, signInWithMagicLink, signOut } = useAuth();
+  const { session, user, loading, roles, signInWithMagicLink, signOut } = useAuth();
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [checking, setChecking] = useState(false);
   const [entitled, setEntitled] = useState(false);
   const [message, setMessage] = useState("");
 
+  const hasAssignedRole = roles.some((role) => assignedDashboardRoles.has(role));
+
   const refreshEntitlement = async () => {
-    if (!supabase || !user) return false;
+    if (!supabase || !user || !session) return false;
+    if (hasAssignedRole) {
+      setEntitled(true);
+      setMessage("");
+      return true;
+    }
+
     setChecking(true);
     setMessage("");
     const { data, error } = await supabase.functions.invoke("claim-dashboard-entitlement", {
-      headers: { Authorization: `Bearer ${session?.access_token ?? ""}` },
+      headers: { Authorization: `Bearer ${session.access_token}` },
       body: {},
     });
     if (error) {
@@ -24,7 +34,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
       return false;
     }
     if (!data?.entitled) {
-      setMessage("No verified ResoFit purchase was found for this email.");
+      setMessage("No verified ResoFit purchase or assigned role was found for this email.");
       setChecking(false);
       return false;
     }
@@ -34,9 +44,12 @@ export function AccessGate({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
-    if (user) void refreshEntitlement();
-    else setEntitled(false);
-  }, [user?.id]);
+    if (!user) {
+      setEntitled(false);
+      return;
+    }
+    void refreshEntitlement();
+  }, [user?.id, roles.join(",")]);
 
   if (loading) {
     return <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">Checking secure access…</div>;
@@ -47,8 +60,8 @@ export function AccessGate({ children }: { children: ReactNode }) {
       <div className="flex min-h-dvh items-center justify-center bg-background px-5 text-foreground">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Reso-Dash</p>
-          <h1 className="mt-3 text-2xl font-bold">Member access</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Sign in with the email used for your verified ResoFit purchase.</p>
+          <h1 className="mt-3 text-2xl font-bold">Secure member access</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Use the email attached to your verified purchase or assigned ResoFit role.</p>
           <form
             className="mt-6 space-y-3"
             onSubmit={async (event) => {
@@ -83,10 +96,10 @@ export function AccessGate({ children }: { children: ReactNode }) {
       <div className="flex min-h-dvh items-center justify-center bg-background px-5 text-foreground">
         <div className="w-full max-w-md rounded-2xl border border-border bg-card p-6 shadow-xl">
           <p className="text-xs font-semibold uppercase tracking-[0.2em] text-muted-foreground">Secure access</p>
-          <h1 className="mt-3 text-2xl font-bold">Purchase verification required</h1>
-          <p className="mt-2 text-sm text-muted-foreground">Reso-Dash unlocks only after Supabase verifies a successful payment.</p>
+          <h1 className="mt-3 text-2xl font-bold">Verification required</h1>
+          <p className="mt-2 text-sm text-muted-foreground">Reso-Dash unlocks only after Supabase verifies a successful payment or an authorized role assignment.</p>
           <button onClick={refreshEntitlement} disabled={checking} className="mt-6 w-full rounded-xl bg-primary px-4 py-3 text-sm font-semibold text-primary-foreground disabled:opacity-50">
-            {checking ? "Verifying…" : "Check verified purchase"}
+            {checking ? "Verifying…" : "Check authorization"}
           </button>
           {message && <p className="mt-4 text-sm text-muted-foreground">{message}</p>}
           <button onClick={() => void signOut()} className="mt-3 w-full rounded-xl border border-input px-4 py-3 text-sm font-medium">Sign out</button>
