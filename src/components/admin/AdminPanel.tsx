@@ -5,23 +5,18 @@ import { MediaDropZone } from "./MediaDropZone";
 import { AvatarPreviews } from "./AvatarPreviews";
 
 export function AdminPanel() {
-  const { role, twoFactorVerified, setRole, setTwoFactor } = useAuth();
-  if (role !== "admin") return null;
+  const { isAdmin, isSuperAdmin, adminMode, twoFactorVerified, toggleAdmin } = useAuth();
+
+  if (!isAdmin || !adminMode) return null;
 
   if (!twoFactorVerified) {
     return (
       <section className="glass-card-gold mb-6 rounded-2xl p-5">
-        <p className="text-[10px] uppercase tracking-[0.3em] text-gold">2FA Required</p>
-        <h3 className="font-display mt-1 text-base font-semibold">Sovereign Layer Locked</h3>
+        <p className="text-[10px] uppercase tracking-[0.3em] text-gold">MFA Required</p>
+        <h3 className="font-display mt-1 text-base font-semibold">Admin layer locked</h3>
         <p className="mt-2 text-xs text-muted-foreground">
-          Auth0 session lacks verified second factor. Simulate verification to proceed.
+          Complete Supabase multi-factor authentication before entering privileged operations.
         </p>
-        <button
-          onClick={() => setTwoFactor(true)}
-          className="mt-3 rounded-md gold-bg px-3 py-1.5 text-[10px] font-semibold uppercase tracking-widest"
-        >
-          Verify 2FA
-        </button>
       </section>
     );
   }
@@ -39,11 +34,11 @@ export function AdminPanel() {
               Operations <span className="gold-text">Console</span>
             </h2>
             <p className="mt-1 text-[10px] uppercase tracking-widest text-muted-foreground">
-              Auth0 · Role admin · 2FA verified
+              Database role: admin · MFA verified · {isSuperAdmin ? "CEO super admin" : "assigned administrator"}
             </p>
           </div>
           <button
-            onClick={() => setRole("client")}
+            onClick={toggleAdmin}
             className="flex h-8 w-8 shrink-0 items-center justify-center rounded-full border border-border bg-card/60 text-muted-foreground hover:text-gold"
             aria-label="Exit admin"
           >
