@@ -2,24 +2,65 @@ import { createContext, useContext, useEffect, useState, type ReactNode } from "
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase-browser";
 
-export type AuthRole = "client" | "admin";
+export const APP_ROLES = ["admin", "moderator", "player", "user", "distributor", "hub", "ambassador", "referrer"] as const;
+export type AuthRole = (typeof APP_ROLES)[number];
 
 interface AuthState {
   session: Session | null;
   user: User | null;
   loading: boolean;
   email: string;
-  role: AuthRole;
+  roles: AuthRole[];
+  role: AuthRole | "client";
+  isAdmin: boolean;
+  isSuperAdmin: boolean;
+  adminMode: boolean;
   twoFactorVerified: boolean;
   signInWithMagicLink: (email: string) => Promise<{ error: string | null }>;
   signOut: () => Promise<void>;
+  toggleAdmin: () => void;
 }
 
 const Ctx = createContext<AuthState | null>(null);
+const privilegedRoles = new Set<AuthRole>(["admin", "moderator", "distributor", "hub", "ambassador", "referrer"]);
+
+function primaryRole(roles: AuthRole[]): AuthRole | "client" {
+  const priority: AuthRole[] = ["admin", "moderator", "distributor", "hub", "ambassador", "referrer", "player", "user"];
+  return priority.find((candidate) => roles.includes(candidate)) ?? "client";
+}
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
+  const [roles, setRoles] = useState<AuthRole[]>([]);
+  const [twoFactorVerified, setTwoFactorVerified] = useState(false);
+  const [adminMode, setAdminMode] = useState(false);
+
+  const refreshAuthorization = async (nextSession: Session | null) => {
+    setSession(nextSession);
+    setAdminMode(false);
+    if (!nextSession?.user || !supabase) {
+      setRoles([]);
+      setTwoFactorVerified(false);
+      return;
+    }
+
+    const { data } = await supabase
+      .from("user_roles")
+      .select("role")
+      .eq("user_id", nextSession.user.id);
+    const assigned = (data ?? [])
+      .map((row) => row.role as AuthRole)
+      .filter((value): value is AuthRole => APP_ROLES.includes(value));
+    setRoles(assigned);
+
+    try {
+      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+      setTwoFactorVerified(aal.currentLevel === "aal2");
+    } catch {
+      setTwoFactorVerified(false);
+    }
+  };
 
   useEffect(() => {
     if (!supabase) {
@@ -27,13 +68,13 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(({ data }) => {
-      setSession(data.session);
+    supabase.auth.getSession().then(async ({ data }) => {
+      await refreshAuthorization(data.session);
       setLoading(false);
     });
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
-      setSession(next);
+      void refreshAuthorization(next);
       setLoading(false);
     });
 
@@ -53,10 +94,17 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const signOut = async () => {
     if (supabase) await supabase.auth.signOut();
-    setSession(null);
+    await refreshAuthorization(null);
   };
 
-  const role: AuthRole = "client";
+  const role = primaryRole(roles);
+  const isAdmin = roles.includes("admin");
+  const isSuperAdmin = Boolean(userEmailIsCEO(session?.user));
+
+  const toggleAdmin = () => {
+    if (!isAdmin || !twoFactorVerified) return;
+    setAdminMode((active) => !active);
+  };
 
   return (
     <Ctx.Provider
@@ -65,10 +113,15 @@ export function AuthProvider({ children }: { children: ReactNode }) {
         user: session?.user ?? null,
         loading,
         email: session?.user.email ?? "",
+        roles,
         role,
-        twoFactorVerified: Boolean(session),
+        isAdmin,
+        isSuperAdmin,
+        adminMode,
+        twoFactorVerified,
         signInWithMagicLink,
         signOut,
+        toggleAdmin,
       }}
     >
       {children}
@@ -76,8 +129,16 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
+function userEmailIsCEO(user: User | null | undefined) {
+  return (user?.email ?? "").trim().toLowerCase() === "ceo@resofit.fit";
+}
+
 export function useAuth() {
   const value = useContext(Ctx);
   if (!value) throw new Error("useAuth must be used inside AuthProvider");
   return value;
+}
+
+export function isPrivilegedRole(role: AuthRole) {
+  return privilegedRoles.has(role);
 }
