@@ -18,8 +18,9 @@ type OrderView = {
   experience?: { product_sku?: string | null; product_name?: string | null; funnel_origin?: string | null } | null;
 };
 
-const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string;
-const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_PUBLISHABLE_KEY as string;
+const SUPABASE_URL = import.meta.env.VITE_SUPABASE_URL as string | undefined;
+// Keep this aligned with the app-wide Supabase client configuration.
+const SUPABASE_KEY = import.meta.env.VITE_SUPABASE_ANON_KEY as string | undefined;
 
 function PaymentCallbackPage() {
   const search = Route.useSearch() as { reference?: string; trxref?: string };
@@ -29,7 +30,17 @@ function PaymentCallbackPage() {
   const [timedOut, setTimedOut] = useState(false);
 
   useEffect(() => {
-    if (!reference || !SUPABASE_URL || !SUPABASE_KEY) return;
+    if (!reference) {
+      setError("missing_reference");
+      setTimedOut(true);
+      return;
+    }
+    if (!SUPABASE_URL || !SUPABASE_KEY) {
+      setError("supabase_not_configured");
+      setTimedOut(true);
+      return;
+    }
+
     let cancelled = false;
     let timer: number | undefined;
     let attempts = 0;
@@ -50,6 +61,7 @@ function PaymentCallbackPage() {
         } finally {
           window.clearTimeout(timeout);
         }
+
         if (!response.ok && response.status !== 503) throw new Error(`verify_${response.status}`);
         const payload = (await response.json()) as OrderView;
         if (cancelled) return;
