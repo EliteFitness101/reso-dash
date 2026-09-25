@@ -16,40 +16,45 @@ export function InstallPrompt() {
 
   useEffect(() => {
     if (typeof window === "undefined") return;
+
     const standalone =
       window.matchMedia("(display-mode: standalone)").matches ||
       // @ts-expect-error iOS Safari
       window.navigator.standalone === true;
+
     if (standalone) {
       setInstalled(true);
       return;
     }
+
     const raw = localStorage.getItem(DISMISS_KEY);
     const until = raw ? parseInt(raw, 10) : 0;
     const stillDismissed = until > Date.now();
     setDismissed(stillDismissed);
 
-    const onBIP = (e: Event) => {
-      e.preventDefault();
-      setDeferred(e as BIPEvent);
+    const onBIP = (event: Event) => {
+      event.preventDefault();
+      setDeferred(event as BIPEvent);
     };
     const onInstalled = () => setInstalled(true);
+
     window.addEventListener("beforeinstallprompt", onBIP);
     window.addEventListener("appinstalled", onInstalled);
 
-    // Fallback: show simulated prompt if BIP never fires
-    const t = window.setTimeout(() => {
+    // Lovable/iframe previews and iOS Safari may not expose beforeinstallprompt.
+    // In those cases show install guidance rather than pretending installation is automatic.
+    const timer = window.setTimeout(() => {
       if (!stillDismissed) setSimulated(true);
     }, 1200);
 
     return () => {
       window.removeEventListener("beforeinstallprompt", onBIP);
       window.removeEventListener("appinstalled", onInstalled);
-      window.clearTimeout(t);
+      window.clearTimeout(timer);
     };
   }, []);
 
-  const visible = !installed && !dismissed && (deferred || simulated);
+  const visible = !installed && !dismissed && (deferred !== null || simulated);
   if (!visible) return null;
 
   const dismiss = () => {
@@ -64,13 +69,13 @@ export function InstallPrompt() {
       const { outcome } = await deferred.userChoice;
       if (outcome === "accepted") setInstalled(true);
       setDeferred(null);
-    } else {
-      // Simulated state — guide the user
-      alert(
-        "To install ResoFlex OS:\n\nSafari iOS: Share → Add to Home Screen\nChrome/Edge: Menu → Install app",
-      );
-      dismiss();
+      return;
     }
+
+    alert(
+      "To install ResoFlex OS:\n\nSafari iOS: Share → Add to Home Screen\nChrome/Edge: Menu → Install app",
+    );
+    dismiss();
   };
 
   return (
@@ -80,23 +85,21 @@ export function InstallPrompt() {
           <div className="grid h-10 w-10 shrink-0 place-items-center rounded-xl gold-bg">
             <Download size={18} strokeWidth={2.25} />
           </div>
-          <div className="flex-1 min-w-0">
-            <p className="font-display text-sm font-semibold leading-tight">
-              Install ResoFlex OS
-            </p>
+          <div className="min-w-0 flex-1">
+            <p className="font-display text-sm font-semibold leading-tight">Install ResoFlex OS</p>
             <p className="text-[11px] leading-tight text-muted-foreground">
-              Run native · offline-ready · zero clutter
+              App-like access · fast launch · built for your phone
             </p>
           </div>
           <button
             onClick={install}
-            className="rounded-xl gold-bg px-4 py-2 font-display text-xs font-bold uppercase tracking-widest active:scale-[0.97] transition-transform"
+            className="rounded-xl gold-bg px-4 py-2 font-display text-xs font-bold uppercase tracking-widest transition-transform active:scale-[0.97]"
           >
             Install
           </button>
           <button
             onClick={dismiss}
-            aria-label="Dismiss"
+            aria-label="Dismiss install prompt"
             className="grid h-9 w-9 place-items-center rounded-xl text-muted-foreground hover:text-foreground"
           >
             <X size={16} />

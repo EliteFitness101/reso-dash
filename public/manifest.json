@@ -1,7 +1,7 @@
 {
   "name": "ResoFlex OS",
-  "short_name": "ResoFlex",
-  "description": "Elite 4-week body recomposition OS",
+  "short_name": "ResoFlex OS",
+  "description": "Mobile-first personalized nutrition, training, and biometric dashboard for ResoFlex OS.",
   "start_url": "/",
   "display": "standalone",
   "background_color": "#0D0D0D",
