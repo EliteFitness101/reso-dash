@@ -1,4 +1,4 @@
-import { createFileRoute, Link } from "@tanstack/react-router";
+import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
 import { CheckCircle2, Clapperboard, Image, Play, RefreshCw, Sparkles, Video } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
@@ -68,6 +68,14 @@ function DigitalProductsFactoryPage(){
   </div>
  </main>;
 }
-function Gate({body}:{body:string}){return <main className="flex min-h-screen items-center justify-center bg-[#07080a] px-5 text-white"><div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/[0.03] p-7"><div className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-400">ResoFit Digital Factory</div><p className="mt-3 text-sm text-white/55">{body}</p>{body.includes("Sign in")&&<div className="mt-6 grid gap-2"><Link to="/login" className="rounded-xl bg-white px-4 py-3 text-center text-sm font-semibold text-black">Sign in</Link><div className="grid grid-cols-2 gap-2"><Link to="/signup" className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-center text-xs font-medium">Create account</Link><Link to="/forgot-password" className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-center text-xs font-medium">Forgot password?</Link></div></div>}</div></main>}
+function Gate({body}:{body:string}){
+ const navigate=useNavigate();
+ const [email,setEmail]=useState("");
+ const [password,setPassword]=useState("");
+ const [busy,setBusy]=useState(false);
+ const [error,setError]=useState("");
+ const signIn=async(e:React.FormEvent)=>{e.preventDefault();setBusy(true);setError("");if(!supabase){setError("Authentication is not configured.");setBusy(false);return;}const {error}=await supabase.auth.signInWithPassword({email:email.trim().toLowerCase(),password});if(error)setError(error.message);else await navigate({to:"/digital-products"});setBusy(false);};
+ const needsSignIn=body.includes("Sign in");
+ return <main className="flex min-h-screen items-center justify-center bg-[#07080a] px-5 text-white"><div className="w-full max-w-md rounded-3xl border border-white/10 bg-white/[0.03] p-7"><div className="text-xs font-semibold uppercase tracking-[0.25em] text-emerald-400">ResoFit Digital Factory</div><h1 className="mt-3 text-2xl font-semibold">{needsSignIn?"Sign in": "Access required"}</h1><p className="mt-2 text-sm text-white/55">{body}</p>{needsSignIn&&<form onSubmit={signIn} className="mt-6 space-y-3"><input required type="email" value={email} onChange={e=>setEmail(e.target.value)} placeholder="Email address" autoComplete="email" className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm outline-none"/><input required type="password" value={password} onChange={e=>setPassword(e.target.value)} placeholder="Password" autoComplete="current-password" className="w-full rounded-xl border border-white/10 bg-black/30 px-3 py-3 text-sm outline-none"/><button disabled={busy} className="w-full rounded-xl bg-white px-4 py-3 text-sm font-semibold text-black disabled:opacity-50">{busy?"Signing in…":"Sign in"}</button>{error&&<p className="rounded-xl border border-amber-400/20 bg-amber-400/5 p-3 text-xs text-amber-200">{error}</p>}</form>}{needsSignIn&&<div className="mt-5 grid grid-cols-2 gap-2"><Link to="/signup" className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-center text-xs font-medium">Create account</Link><Link to="/forgot-password" className="rounded-xl border border-white/10 bg-white/[0.04] px-3 py-3 text-center text-xs font-medium">Forgot password?</Link></div>}</div></main>}
 function Kpi({label,value}:{label:string;value:string}){return <div className="rounded-xl bg-black/20 p-3"><div className="text-[10px] text-white/35">{label}</div><div className="mt-1 text-sm font-semibold">{value}</div></div>}
 function Contract({icon:Icon,title,text}:{icon:typeof Play;title:string;text:string}){return <div className="rounded-xl border border-white/8 bg-black/20 p-4"><Icon className="h-4 w-4 text-emerald-400"/><div className="mt-2 text-xs font-semibold">{title}</div><p className="mt-1 text-[10px] leading-4 text-white/45">{text}</p></div>}
