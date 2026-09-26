@@ -75,7 +75,7 @@ function V12EnginePage() {
             <h1 className="text-3xl font-semibold tracking-tight sm:text-4xl">ResoFit V12 Engine</h1>
             <p className="mt-1 max-w-3xl text-sm text-white/55">Content engine + revenue funnel + ChatB2K intelligence + ingest + workers + external integrations.</p>
           </div>
-          <button onClick={() => void load()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium hover:bg-white/[0.08]"><RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} /> Refresh telemetry</button>
+          <div className="flex flex-wrap gap-2"><a href="/digital-products" className="inline-flex items-center justify-center gap-2 rounded-xl border border-emerald-400/20 bg-emerald-400/10 px-4 py-2 text-sm font-medium text-emerald-200">Digital Products Factory</a><button onClick={() => void load()} className="inline-flex items-center justify-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm font-medium hover:bg-white/[0.08]"><RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} /> Refresh telemetry</button></div>
         </header>
 
         {error && <div className="mb-5 rounded-2xl border border-amber-400/20 bg-amber-400/5 p-4 text-sm text-amber-200"><CircleAlert className="mr-2 inline h-4 w-4" />{error}</div>}
