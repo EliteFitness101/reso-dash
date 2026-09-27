@@ -68,17 +68,42 @@ export function AuthProvider({ children }: { children: ReactNode }) {
       return;
     }
 
-    supabase.auth.getSession().then(async ({ data }) => {
-      await refreshAuthorization(data.session);
-      setLoading(false);
-    });
+    let mounted = true;
+    let settled = false;
+
+    const finishInitialAuth = () => {
+      if (!settled && mounted) {
+        settled = true;
+        setLoading(false);
+      }
+    };
+
+    const timeout = window.setTimeout(finishInitialAuth, 5000);
 
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
+      if (!mounted) return;
+      setSession(next);
+      finishInitialAuth();
       void refreshAuthorization(next);
-      setLoading(false);
     });
 
-    return () => listener.subscription.unsubscribe();
+    void supabase.auth
+      .getSession()
+      .then(({ data }) => {
+        if (!mounted) return;
+        setSession(data.session);
+        finishInitialAuth();
+        void refreshAuthorization(data.session);
+      })
+      .catch(() => {
+        finishInitialAuth();
+      });
+
+    return () => {
+      mounted = false;
+      window.clearTimeout(timeout);
+      listener.subscription.unsubscribe();
+    };
   }, []);
 
   const signInWithMagicLink = async (email: string) => {
