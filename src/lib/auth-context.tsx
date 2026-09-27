@@ -31,7 +31,7 @@ function primaryRole(roles: AuthRole[]): AuthRole | "client" {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(true);
+  const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState<AuthRole[]>([]);
   const [twoFactorVerified, setTwoFactorVerified] = useState(false);
   const [adminMode, setAdminMode] = useState(false);
