@@ -6,6 +6,8 @@ const VIDEO_MODEL = "veo-3.1-generate-preview";
 const IMAGE_MODEL = "gemini-3.1-flash-image";
 const BUCKET = "digital-product-media";
 
+export const maxDuration = 300;
+
 function env(name: string) {
   const value = process.env[name];
   if (!value) throw new Error(`${name}_missing`);
@@ -85,7 +87,7 @@ async function startVideo(key: string, slot: any) {
     headers: { "x-goog-api-key": key, "content-type": "application/json" },
     body: JSON.stringify({
       instances: [{ prompt: slot.prompt }],
-      parameters: { aspectRatio: slot.aspect_ratio, durationSeconds: String(slot.duration_seconds ?? 8), resolution: "720p", numberOfVideos: 1 },
+      parameters: { aspectRatio: slot.aspect_ratio, durationSeconds: Number(slot.duration_seconds ?? 8), resolution: "720p", numberOfVideos: 1 },
     }),
   });
   const body = await response.json();
