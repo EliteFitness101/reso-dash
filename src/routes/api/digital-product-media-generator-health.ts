@@ -37,6 +37,7 @@ export const Route = createFileRoute("/api/digital-product-media-generator-healt
             const { error } = await client.from("digital_product_factory_jobs").select("id").limit(1);
             result.checks.database = !error;
             result.supabase_reachable = !error;
+            if (error) result.database_error = error.code ?? error.message;
           }
         } catch {
           // Health endpoint intentionally returns booleans only.
