@@ -33,11 +33,15 @@ export const Route = createFileRoute("/api/digital-product-media-generator-healt
             result.gemini_reachable = video.ok && image.ok;
           }
           if (url && secret) {
-            const client = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
-            const { error } = await client.from("digital_product_factory_jobs").select("id").limit(1);
-            result.checks.database = !error;
-            result.supabase_reachable = !error;
-            if (error) result.database_error = error.code ?? error.message;
+            try {
+              const client = createClient(url, secret, { auth: { persistSession: false, autoRefreshToken: false } });
+              const { error } = await client.from("digital_product_factory_jobs").select("id").limit(1);
+              result.checks.database = !error;
+              result.supabase_reachable = !error;
+              if (error) result.database_error = error.code ?? error.message;
+            } catch (dbError) {
+              result.database_error = dbError instanceof Error ? dbError.message : "database_client_exception";
+            }
           }
         } catch {
           // Health endpoint intentionally returns booleans only.
