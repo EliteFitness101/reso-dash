@@ -33,7 +33,7 @@ function DigitalProductsFactoryPage(){
  }
  useEffect(()=>{void load()},[session?.access_token]);
 
- async function generate(jobId:string,action:"start"|"poll"){setLoading(true);setMessage("");try{const response=await fetch("/api/digital-product-media-generator",{method:"POST",headers:{Authorization:`Bearer ${session?.access_token ?? ""}`,"Content-Type":"application/json"},body:JSON.stringify({action,job_id:jobId})});const r=await response.json();if(!response.ok||!r.ok)throw new Error(r.error||"Media generation failed");setMessage(action==="start"?"Gemini/Veo generation submitted. Poll again when operations complete.":"Generation status refreshed.");await load();}catch(e){setMessage(e instanceof Error?e.message:String(e));}finally{setLoading(false);}}
+ async function generate(jobId:string,action:"start"|"poll"){setLoading(true);setMessage("");try{if(!supabase)throw new Error("Supabase client unavailable.");const {data:r,error}=await supabase.functions.invoke("digital-product-media-generator",{body:{action,job_id:jobId}});if(error)throw error;if(!r?.ok)throw new Error(r?.error||"Media generation failed");setMessage(action==="start"?"Gemini/Veo generation submitted. Poll again when operations complete.":"Generation status refreshed.");await load();}catch(e){setMessage(e instanceof Error?e.message:String(e));}finally{setLoading(false);}}
 
  async function create(){
   setLoading(true);setMessage("");
