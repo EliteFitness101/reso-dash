@@ -1,7 +1,7 @@
 import { createFileRoute } from "@tanstack/react-router";
 
 const COMMERCE_URL =
-  import.meta.env.VITE_COMMERCE_URL || "https://shop.resofit.fit/";
+  import.meta.env.VITE_COMMERCE_URL || "https://store.resofit.fit/";
 
 export const Route = createFileRoute("/_shell/checkout")({
   component: CommerceRedirect,
