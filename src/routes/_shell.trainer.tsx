@@ -91,7 +91,7 @@ function TrainerPage() {
       const response = await fetch("https://vbqjvmnhdtdhmeeudqnn.supabase.co/functions/v1/resofit-personal-plan", {
         method: "POST",
         headers: { Authorization: `Bearer ${token}`, "Content-Type": "application/json" },
-        body: JSON.stringify({ product_sku: "RESO-PT-TRIAL-7D", intake }),
+        body: JSON.stringify({ intake }),
       });
       const payload = await response.json().catch(() => ({})) as PlanResponse;
       if (!response.ok) {
