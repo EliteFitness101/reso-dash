@@ -1,0 +1,20 @@
+import "jsr:@supabase/functions-js/edge-runtime.d.ts";
+import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
+const url=Deno.env.get("SUPABASE_URL")??"";
+const key=Deno.env.get("SUPABASE_SERVICE_ROLE_KEY")??"";
+const headers={"Access-Control-Allow-Origin":"https://resofit.fit","Access-Control-Allow-Headers":"apikey,authorization,content-type","Access-Control-Allow-Methods":"POST,OPTIONS","Cache-Control":"public, max-age=60"};
+const json=(d:unknown,s=200)=>new Response(JSON.stringify(d),{status:s,headers:{...headers,"Content-Type":"application/json"}});
+Deno.serve(async(req)=>{
+ if(req.method==="OPTIONS") return new Response("ok",{headers});
+ if(req.method!=="POST") return json({error:"Method not allowed"},405);
+ const body=await req.json().catch(()=>({}));
+ const sku=typeof body?.product_sku==="string"?body.product_sku.trim():"";
+ if(!sku) return json({error:"product_sku is required"},400);
+ const admin=createClient(url,key,{auth:{persistSession:false,autoRefreshToken:false}});
+ const {data:experience,error}=await admin.from("resofit_product_experience_config").select("product_sku,teaser,promise,delivery,plan,meal_workout,lifestyle_hacks,accessory_skus").eq("product_sku",sku).maybeSingle();
+ if(error) return json({error:"Unable to load product experience"},500);
+ if(!experience) return json({ok:true,experience:null,accessories:[]});
+ const skus=Array.isArray(experience.accessory_skus)?experience.accessory_skus.filter((x):x is string=>typeof x==="string"):[];
+ const {data:accessories}=skus.length?await admin.from("products").select("sku,title,handle,variant_price,image_src,published").in("sku",skus).eq("published",true):{data:[]};
+ return json({ok:true,experience,accessories:accessories??[]});
+});
