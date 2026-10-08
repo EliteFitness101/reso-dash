@@ -25,7 +25,7 @@ function LoginPage() {
     if (!supabase) { setMessage("Authentication is not configured."); setBusy(false); return; }
     const { error } = await supabase.auth.signInWithOtp({
       email: email.trim().toLowerCase(),
-      options: { emailRedirectTo: window.location.origin + "/digital-products" },
+      options: { emailRedirectTo: "https://dashboard.resofit.fit/ceo-growth" },
     });
     setMessage(error ? error.message : "Check your email for the secure sign-in link.");
     setBusy(false);
