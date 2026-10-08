@@ -21,6 +21,10 @@ type Snapshot = {
   blockedToday: number;
   failedCaptures: number;
   queuedItems: number;
+  verifiedSuppliers: number;
+  supplierLeads: number;
+  activeSupplierFeeds: number;
+  fulfillmentPending: number;
 };
 
 const TARGET = 1_000_000;
@@ -57,7 +61,7 @@ function CEODashboard() {
     thirtyDaysAgo.setDate(now.getDate() - 30);
 
     try {
-      const [payments, subscribers, profiles, sources, highlights, assets, queue, captureJobs] = await Promise.all([
+      const [payments, subscribers, profiles, sources, highlights, assets, queue, captureJobs, supplierProfiles, supplierLeads, supplierFeeds, fulfillmentOrders] = await Promise.all([
         supabase.from("payments").select("gross_amount,status,paid_at,created_at").gte("created_at", thirtyDaysAgo.toISOString()).limit(5000),
         supabase.from("resoflex_subscribers").select("id,payment_status").limit(5000),
         supabase.from("profiles").select("id").limit(5000),
@@ -66,9 +70,13 @@ function CEODashboard() {
         supabase.from("content_asset_registry").select("id,qa_status,created_at").gte("created_at", todayStart.toISOString()).limit(5000),
         supabase.from("content_queue").select("id,status,created_at,published_at,safety_checked").limit(5000),
         supabase.from("bigo_capture_jobs").select("id,status,error_message,created_at").gte("created_at", todayStart.toISOString()).limit(5000),
+        supabase.from("resofit_supplier_partner_profiles").select("id,verification_status").limit(5000),
+        supabase.from("resofit_supplier_partner_leads").select("id,verification_status").limit(5000),
+        supabase.from("resofit_supplier_inventory_feeds").select("id,status").limit(5000),
+        supabase.from("resofit_supplier_fulfillment_orders").select("id,supplier_assignment_status,fulfillment_status").limit(5000),
       ]);
 
-      const firstError = [payments, subscribers, profiles, sources, highlights, assets, queue, captureJobs].find((r) => r.error)?.error;
+      const firstError = [payments, subscribers, profiles, sources, highlights, assets, queue, captureJobs, supplierProfiles, supplierLeads, supplierFeeds, fulfillmentOrders].find((r) => r.error)?.error;
       if (firstError) throw firstError;
 
       const paid = (payments.data ?? []).filter((p) => ["success", "paid", "completed"].includes(String(p.status ?? "").toLowerCase()));
@@ -95,6 +103,10 @@ function CEODashboard() {
         blockedToday,
         failedCaptures,
         queuedItems: queueRows.filter((q) => ["queued", "pending", "scheduled"].includes(String(q.status ?? "").toLowerCase())).length,
+        verifiedSuppliers: (supplierProfiles.data ?? []).filter((s) => String(s.verification_status ?? "").toLowerCase() === "verified").length,
+        supplierLeads: (supplierLeads.data ?? []).filter((s) => ["unverified", "contacted", "screening"].includes(String(s.verification_status ?? "").toLowerCase())).length,
+        activeSupplierFeeds: (supplierFeeds.data ?? []).filter((s) => String(s.status ?? "").toLowerCase() === "active").length,
+        fulfillmentPending: (fulfillmentOrders.data ?? []).filter((o) => !["delivered", "cancelled", "returned"].includes(String(o.fulfillment_status ?? "").toLowerCase())).length,
       });
       setLastUpdated(new Date());
     } catch (e) {
@@ -152,6 +164,7 @@ function CEODashboard() {
           <MetricCard icon={<WalletCards size={17} />} label="Paid transactions · 30d" value={String(snapshot?.payments30d ?? 0)} />
           <MetricCard icon={<UserPlus size={17} />} label="Active BIGO sources" value={String(snapshot?.activeHosts ?? 0)} />
           <MetricCard icon={<Users size={17} />} label="Members / profiles" value={String(snapshot?.members ?? 0)} />
+          <MetricCard icon={<UserPlus size={17} />} label="Verified suppliers" value={String(snapshot?.verifiedSuppliers ?? 0)} accent />
         </section>
 
         <section className="mt-5 grid gap-4 lg:grid-cols-[1.3fr_.7fr]">
@@ -188,6 +201,12 @@ function CEODashboard() {
           <ActionLane title="CREATE NEXT" icon={<Film size={16} />} items={[["New highlights", String(snapshot?.highlightsToday ?? 0)], ["Enriched assets", String(snapshot?.assetsToday ?? 0)], ["Queue backlog", String(snapshot?.queuedItems ?? 0)]]} />
           <ActionLane title="RECRUIT NEXT" icon={<UserPlus size={16} />} items={[["Active capture sources", String(snapshot?.activeHosts ?? 0)], ["Daily host objective", "1+ qualified"], ["Conversion", "Application → active host"]]} />
           <ActionLane title="CONVERT NEXT" icon={<CircleDollarSign size={16} />} items={[["Revenue today", naira(snapshot?.revenueToday ?? 0)], ["Paid transactions", String(snapshot?.payments30d ?? 0)], ["Subscription records", String(snapshot?.subscribers ?? 0)]]} />
+        </section>
+
+        <section className="mt-5 grid gap-4 lg:grid-cols-3">
+          <ActionLane title="SUPPLIER NETWORK" icon={<Users size={16} />} items={[["Verified suppliers", String(snapshot?.verifiedSuppliers ?? 0)], ["Leads awaiting verification", String(snapshot?.supplierLeads ?? 0)], ["Active inventory feeds", String(snapshot?.activeSupplierFeeds ?? 0)]]} />
+          <ActionLane title="FULFILLMENT" icon={<ArrowUpRight size={16} />} items={[["Open fulfillment orders", String(snapshot?.fulfillmentPending ?? 0)], ["Supplier assignment", snapshot?.fulfillmentPending ? "ACTION REQUIRED" : "CLEAR"], ["Delivery model", "Pickup / park / door"]]} />
+          <ActionLane title="NETWORK GATE" icon={<ShieldCheck size={16} />} items={[["Recommendation source", "Verified only"], ["Supplier status", snapshot?.verifiedSuppliers ? "ACTIVE" : "NO VERIFIED PARTNER"], ["WhatsApp outbound", "PROVIDER GATED"]]} />
         </section>
 
         <section className="mt-5 glass-card rounded-3xl p-5">
