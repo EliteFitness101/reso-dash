@@ -112,7 +112,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!normalized.includes("@")) return { error: "Enter a valid email address." };
     const { error } = await supabase.auth.signInWithOtp({
       email: normalized,
-      options: { emailRedirectTo: window.location.origin + "/today" },
+      options: { emailRedirectTo: "https://dashboard.resofit.fit/ceo-growth" },
     });
     return { error: error?.message ?? null };
   };
