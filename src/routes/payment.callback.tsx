@@ -5,7 +5,7 @@ import { useEffect, useState } from "react";
 export const Route = createFileRoute("/payment/callback")({ component: PaymentCallbackPage });
 
 type OrderView = {
-  status?: "pending" | "paid" | "failed" | "cancelled" | "refunded" | "expired";
+  status?: "pending" | "paid" | "failed" | "cancelled" | "refunded" | "reversed" | "expired";
   reference?: string;
   amount?: number;
   currency?: string;
@@ -101,7 +101,12 @@ function PaymentCallbackPage() {
 
   const status = order?.status ?? "pending";
   const paid = status === "paid";
-  const failed = ["failed", "cancelled", "refunded", "expired"].includes(status);
+  const cancelled = status === "cancelled";
+  const expired = status === "expired";
+  const reversed = status === "reversed";
+  const refunded = status === "refunded";
+  const failed = status === "failed";
+  const terminal = failed || cancelled || expired || reversed || refunded;
   const productName = (order?.product_name ?? order?.experience?.product_name)?.trim();
 
   return (
@@ -109,13 +114,13 @@ function PaymentCallbackPage() {
       <div className="mx-auto flex min-h-[78vh] max-w-md items-center justify-center">
         <section className="glass-card-gold w-full rounded-3xl p-6 shadow-2xl">
           <div className="text-center">
-            {paid ? <CheckCircle2 className="mx-auto h-14 w-14 text-gold" aria-hidden="true" /> : failed ? <XCircle className="mx-auto h-14 w-14 text-destructive" aria-hidden="true" /> : <Clock3 className="mx-auto h-14 w-14 text-gold" aria-hidden="true" />}
-            <p className="mt-5 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">{paid ? "Payment verified · ResoFit" : failed ? "Payment status" : timedOut ? "Payment confirmation delayed" : "Verifying payment"}</p>
+            {paid ? <CheckCircle2 className="mx-auto h-14 w-14 text-gold" aria-hidden="true" /> : terminal ? <XCircle className="mx-auto h-14 w-14 text-destructive" aria-hidden="true" /> : <Clock3 className="mx-auto h-14 w-14 text-gold" aria-hidden="true" />}
+            <p className="mt-5 text-[10px] uppercase tracking-[0.3em] text-muted-foreground">{paid ? "Payment verified · ResoFit" : cancelled ? "Checkout cancelled · no payment confirmed" : failed ? "Payment failed" : expired ? "Checkout expired" : reversed ? "Payment reversed" : refunded ? "Payment refunded" : timedOut ? "Payment confirmation delayed" : "Verifying payment"}</p>
             <h1 className="mt-2 font-display text-2xl font-semibold leading-tight">
-              {paid ? productName ? `Welcome to ${productName}.` : "Welcome to your personalized journey." : failed ? "We could not confirm this payment." : timedOut ? "Your payment is still being reconciled." : "We are confirming your payment."}
+              {paid ? productName ? `Welcome to ${productName}.` : "Welcome to your personalized journey." : cancelled ? "You cancelled checkout." : failed ? "Paystack confirmed that this payment failed." : expired ? "This checkout expired without payment confirmation." : reversed ? "This payment was reversed." : refunded ? "This payment was refunded." : timedOut ? "Your payment is still being reconciled." : "We are confirming your payment."}
             </h1>
             <p className="mt-3 text-sm leading-6 text-muted-foreground">
-              {paid ? order?.next_steps || "Your verified production purchase is ready for the secure member handoff." : failed ? "No fulfillment action is being assumed until the production payment state is confirmed." : timedOut ? "Do not pay again. Keep this reference; the production verification can be checked again safely." : "Paystack confirmation and order processing can take a few moments."}
+              {paid ? order?.next_steps || "Your verified production purchase is ready for the secure member handoff." : cancelled ? "No successful payment was confirmed, so this attempt is not counted as a purchase. You can return to the shop and choose another payment method." : failed ? "No fulfillment is triggered for a provider-confirmed failed payment." : expired ? "The confirmation window expired without proof of payment. This is not recorded as a provider-declined payment. Contact support if you believe you were charged." : reversed ? "Paystack reports a reversal; this is not counted as a successful purchase. Contact support if funds have not returned." : refunded ? "This payment was refunded and is not counted as current collected revenue." : timedOut ? "Do not pay again. Keep this reference; the production verification can be checked again safely." : "Paystack confirmation and order processing can take a few moments."}
             </p>
           </div>
 
@@ -123,8 +128,8 @@ function PaymentCallbackPage() {
 
           {paid && <div className="mt-5 space-y-3"><div className="rounded-2xl border border-gold/20 bg-gold/5 p-4"><p className="text-[10px] uppercase tracking-[0.22em] text-gold">Verified experience</p><p className="mt-2 text-sm text-muted-foreground">{productName ? `Your onboarding will use the verified ${productName} purchase context.` : "Your onboarding will use the verified purchase context."}</p></div><Link to="/onboarding" className="flex w-full items-center justify-center rounded-xl gold-bg py-4 font-display text-sm font-bold uppercase tracking-[0.18em] text-background">Continue to onboarding</Link><Link to="/" className="flex w-full items-center justify-center rounded-xl border border-border py-3 text-xs font-medium text-muted-foreground">Open My Member Dashboard</Link></div>}
 
-          {!paid && !failed && !timedOut && <div className="mt-5 rounded-2xl border border-border bg-background/30 p-4 text-xs text-muted-foreground">{error ? "Verification is retrying automatically." : "Checking the verified production order state…"}</div>}
-          {timedOut && !failed && <div className="mt-5 space-y-3"><Link to="/payment/callback" search={{ reference }} className="flex w-full items-center justify-center rounded-xl gold-bg py-4 font-display text-sm font-bold uppercase tracking-[0.18em] text-background">Check payment status again</Link><Link to="/" className="flex w-full items-center justify-center rounded-xl border border-border py-3 text-xs font-medium text-muted-foreground">Return to ResoFit</Link></div>}
+          {!paid && !terminal && !timedOut && <div className="mt-5 rounded-2xl border border-border bg-background/30 p-4 text-xs text-muted-foreground">{error ? "Verification is retrying automatically." : "Checking the verified production order state…"}</div>}
+          {timedOut && !terminal && <div className="mt-5 space-y-3"><Link to="/payment/callback" search={{ reference }} className="flex w-full items-center justify-center rounded-xl gold-bg py-4 font-display text-sm font-bold uppercase tracking-[0.18em] text-background">Check payment status again</Link><Link to="/" className="flex w-full items-center justify-center rounded-xl border border-border py-3 text-xs font-medium text-muted-foreground">Return to ResoFit</Link></div>}
 
           <div className="mt-5 flex items-center justify-center gap-2 text-[9px] uppercase tracking-widest text-muted-foreground"><ShieldCheck size={12} className="text-gold" /><span>Secure payment · ResoFit</span></div>
         </section>
