@@ -20,7 +20,8 @@ jobs:
           node-version: 22
       - run: npm install --no-audit --no-fund
       - name: Lint touched security and routing files
-        run: npx eslint src/lib/auth-context.tsx src/components/AccessGate.tsx src/routes/ceo-growtj.tsx --rule 'prettier/prettier: off'
+        run: |
+          npx eslint src/lib/auth-context.tsx src/components/AccessGate.tsx src/routes/ceo-growtj.tsx --rule "prettier/prettier: off"
       - name: Production build and generated-route verification
         run: npm run build
       - name: CEO route and access smoke
