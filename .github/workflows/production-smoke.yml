@@ -1,0 +1,27 @@
+name: ResoDash production smoke
+on:
+  pull_request:
+    branches: [main]
+  push:
+    branches: [fix/ceo-growth-route-consolidation]
+permissions:
+  contents: read
+concurrency:
+  group: resodash-production-smoke-${{ github.ref }}
+  cancel-in-progress: true
+jobs:
+  build-and-smoke:
+    runs-on: ubuntu-latest
+    timeout-minutes: 15
+    steps:
+      - uses: actions/checkout@v4
+      - uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - run: npm install --no-audit --no-fund
+      - name: Lint touched security and routing files
+        run: npx eslint src/lib/auth-context.tsx src/components/AccessGate.tsx src/routes/ceo-growtj.tsx --rule 'prettier/prettier: off'
+      - name: Production build and generated-route verification
+        run: npm run build
+      - name: CEO route and access smoke
+        run: node scripts/smoke-ceo-routes.mjs
