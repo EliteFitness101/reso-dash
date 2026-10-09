@@ -33,6 +33,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(false);
   const [roles, setRoles] = useState<AuthRole[]>([]);
+  const [workspaceRole, setWorkspaceRole] = useState<string | null>(null);
   const [twoFactorVerified, setTwoFactorVerified] = useState(false);
   const [adminMode, setAdminMode] = useState(false);
 
@@ -41,18 +42,20 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     setAdminMode(false);
     if (!nextSession?.user || !supabase) {
       setRoles([]);
+      setWorkspaceRole(null);
       setTwoFactorVerified(false);
       return;
     }
 
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", nextSession.user.id);
+    const [{ data }, { data: workspaceRoleData, error: workspaceRoleError }] = await Promise.all([
+      supabase.from("user_roles").select("role").eq("user_id", nextSession.user.id),
+      supabase.rpc("get_my_workspace_role"),
+    ]);
     const assigned = (data ?? [])
       .map((row) => row.role as AuthRole)
       .filter((value): value is AuthRole => APP_ROLES.includes(value));
     setRoles(assigned);
+    setWorkspaceRole(!workspaceRoleError && typeof workspaceRoleData === "string" ? workspaceRoleData : null);
 
     try {
       const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
@@ -124,7 +127,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const role = primaryRole(roles);
   const isAdmin = roles.includes("admin");
-  const isSuperAdmin = Boolean(userEmailIsCEO(session?.user));
+  const isSuperAdmin = workspaceRole === "super_admin";
 
   const toggleAdmin = () => {
     if (!isAdmin || !twoFactorVerified) return;
@@ -154,9 +157,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function userEmailIsCEO(user: User | null | undefined) {
-  return (user?.email ?? "").trim().toLowerCase() === "ceo@resofit.fit";
-}
 
 export function useAuth() {
   const value = useContext(Ctx);
