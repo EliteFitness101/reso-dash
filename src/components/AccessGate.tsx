@@ -17,7 +17,7 @@ type Experience = {
 };
 
 export function AccessGate({ children }: { children: ReactNode }) {
-  const { session, user, loading, roles, signInWithMagicLink, signOut } = useAuth();
+  const { session, user, loading, roles, isSuperAdmin, signInWithMagicLink, signOut } = useAuth();
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -28,6 +28,12 @@ export function AccessGate({ children }: { children: ReactNode }) {
 
   const refreshEntitlement = async () => {
     if (!supabase || !user || !session) return false;
+    if (isSuperAdmin) {
+      setEntitled(true);
+      setChecking(false);
+      setMessage("");
+      return true;
+    }
     if (hasAssignedRole) {
       setEntitled(true);
       setMessage("");
@@ -69,7 +75,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
       return;
     }
     void refreshEntitlement();
-  }, [user?.id, roles.join(",")]);
+  }, [user?.id, roles.join(","), isSuperAdmin]);
 
   if (loading) {
     return <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">Checking secure access…</div>;
