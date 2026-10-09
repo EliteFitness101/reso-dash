@@ -126,6 +126,8 @@ function PaymentCallbackPage() {
 
           {reference && <div className="mt-5 rounded-2xl border border-border bg-background/30 px-4 py-3"><p className="text-[9px] uppercase tracking-widest text-muted-foreground">Payment reference</p><p className="mt-1 break-all font-mono text-xs">{reference}</p></div>}
 
+          {cancelled && <a href="https://www.resofit.fit/shop" className="mt-5 flex min-h-12 w-full items-center justify-center rounded-xl gold-bg px-4 py-3 text-xs font-bold uppercase tracking-widest text-background">Return to shop and choose another method</a>}
+
           {paid && <div className="mt-5 space-y-3"><div className="rounded-2xl border border-gold/20 bg-gold/5 p-4"><p className="text-[10px] uppercase tracking-[0.22em] text-gold">Verified experience</p><p className="mt-2 text-sm text-muted-foreground">{productName ? `Your onboarding will use the verified ${productName} purchase context.` : "Your onboarding will use the verified purchase context."}</p></div><Link to="/onboarding" className="flex w-full items-center justify-center rounded-xl gold-bg py-4 font-display text-sm font-bold uppercase tracking-[0.18em] text-background">Continue to onboarding</Link><Link to="/" className="flex w-full items-center justify-center rounded-xl border border-border py-3 text-xs font-medium text-muted-foreground">Open My Member Dashboard</Link></div>}
 
           {!paid && !terminal && !timedOut && <div className="mt-5 rounded-2xl border border-border bg-background/30 p-4 text-xs text-muted-foreground">{error ? "Verification is retrying automatically." : "Checking the verified production order state…"}</div>}
