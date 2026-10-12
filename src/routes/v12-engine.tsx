@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Bot, CheckCircle2, CircleAlert, Database, ExternalLink, Gauge, Globe2, Layers3, Linkedin, RefreshCw, Server, ShieldCheck, Sparkles, Workflow } from "lucide-react";
+import { Activity, Bot, CircleAlert, Database, ExternalLink, Gauge, Globe2, Layers3, Linkedin, RefreshCw, ShieldCheck, Sparkles, Workflow } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase-browser";
 
@@ -27,7 +27,6 @@ type Snapshot = {
   endpoints: { name: string; slug: string; path: string; method: string; purpose?: string }[];
 };
 
-const money = (n: number) => new Intl.NumberFormat("en-NG", { style: "currency", currency: "NGN", maximumFractionDigits: 0 }).format(n);
 const when = (value?: string | null) => value ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "No runtime evidence";
 const platformLabel = (s: string) => s === "google_business" ? "Google Business" : s.charAt(0).toUpperCase() + s.slice(1);
 
