@@ -1,4 +1,4 @@
-import { useEffect, useState } from "react";
+import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase-browser";
 
 type Factor = { id: string; status: string; factor_type: string };
@@ -66,7 +66,7 @@ export function CEOAccessMFA() {
     setNotice("Scan the QR code with an authenticator app, then enter the current six-digit code to finish enrollment.");
   }
 
-  async function verifyCode(event: React.FormEvent<HTMLFormElement>) {
+  async function verifyCode(event: FormEvent<HTMLFormElement>) {
     event.preventDefault();
     if (!supabase || !factorId) return;
     setBusy(true);
