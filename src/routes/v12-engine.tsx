@@ -35,7 +35,8 @@ function V12EnginePage() {
   const { session, loading: authLoading, isAdmin, isSuperAdmin, twoFactorVerified } = useAuth();
   const [data, setData] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<"sync" | "portfolio" | "qa" | null>(null);
+  const [busy, setBusy] = useState<"sync" | "portfolio" | "qa" | "assessment" | null>(null);
+  const [assessmentResult, setAssessmentResult] = useState<any>(null);
   const [qaResult, setQaResult] = useState<any>(null);
   const [error, setError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
@@ -53,11 +54,22 @@ function V12EnginePage() {
 
   useEffect(() => { void load(); }, [session?.access_token]);
 
-  const runAction = async (action: "sync" | "portfolio" | "qa") => {
+  const runAction = async (action: "sync" | "portfolio" | "qa" | "assessment") => {
     if (!supabase) { setError("Supabase is not configured in this deployment."); return; }
     setBusy(action); setActionMessage(""); setError("");
     try {
-      if (action === "qa") {
+      if (action === "assessment") {
+        setAssessmentResult(null);
+        const { data: result, error: fnError } = await supabase.functions.invoke("resofit-ecosystem-qa", { body: { action: "assessment_smoke_test" } });
+        if (fnError) setError(fnError.message);
+        else if (result?.error || result?.ok === false) setError(String(result?.error || "Assessment smoke test did not complete."));
+        else {
+          setAssessmentResult(result?.assessment_smoke_test ?? null);
+          setActionMessage(result?.assessment_smoke_test?.ok
+            ? "Assessment interaction smoke test passed. No checkout or payment was triggered."
+            : "Assessment interaction smoke test returned a failure/unsupported result. Review the recorded details before calling the assessment healthy.");
+        }
+      } else if (action === "qa") {
         const offset = qaResult?.route_audit_truncated ? Number(qaResult.next_route_offset || 0) : 0;
         const { data: result, error: fnError } = await supabase.functions.invoke("resofit-ecosystem-qa", { body: { action: "full_audit", max_routes: 250, route_offset: offset } });
         if (fnError) setError(fnError.message);
@@ -196,9 +208,11 @@ function V12EnginePage() {
             <p className="mb-3 text-xs text-white/45">Manual, read-only audit of public routes, origin reachability and mobile Lighthouse scores. No forms submitted or payments initiated.</p>
             <div className="flex flex-wrap gap-2">
               <button onClick={() => void runAction("qa")} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-lg border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs text-amber-100 hover:bg-amber-300/15 disabled:opacity-50"><Gauge className={busy === "qa" ? "h-3 w-3 animate-pulse" : "h-3 w-3"} /> {busy === "qa" ? "Auditing routes + speed…" : qaResult?.route_audit_truncated ? "Run next route batch" : "Run full ecosystem QA"}</button>
+              <button onClick={() => void runAction("assessment")} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/[0.05] disabled:opacity-50"><Activity className={busy === "assessment" ? "h-3 w-3 animate-pulse" : "h-3 w-3"} /> {busy === "assessment" ? "Testing assessment…" : "Test assessment flow"}</button>
               <a href="https://pagespeed.web.dev/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/[0.05]">PageSpeed Insights <ExternalLink className="h-3 w-3" /></a>
               <a href="https://www.browserstack.com/automate/playwright" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/[0.05]">Real-device browser QA <ExternalLink className="h-3 w-3" /></a>
             </div>
+            {assessmentResult && <div className="mt-4 rounded-xl border border-white/10 p-3"><div className="flex items-center justify-between gap-2"><div className="text-xs font-semibold uppercase tracking-wider text-white/50">Assessment interaction test</div><Badge good={assessmentResult.ok} warn={!assessmentResult.ok}>{assessmentResult.ok ? "PASS" : "CHECK"}</Badge></div><div className="mt-2 break-all text-xs text-white/65">{assessmentResult.url}</div><div className="mt-1 text-[11px] text-white/45">Latency {assessmentResult.latency_ms == null ? "—" : String(Math.round(Number(assessmentResult.latency_ms))) + " ms"} · Interaction HTTP {assessmentResult.interaction_status ?? "not returned"}</div>{assessmentResult.error && <p className="mt-2 text-xs text-rose-300">{assessmentResult.error}</p>}{assessmentResult.output && <pre className="mt-3 max-h-48 overflow-auto whitespace-pre-wrap break-words text-[10px] text-white/45">{String(assessmentResult.output).slice(0,3000)}</pre>}<p className="mt-2 text-[10px] text-white/35">Read-only assessment choices only; no personal data, checkout, or payment was submitted.</p></div>}
             {qaResult && <div className="mt-4 rounded-xl border border-white/10 p-3">
               <div className="text-xs font-semibold uppercase tracking-wider text-white/50">Latest manual audit</div>
               <div className="mt-3 grid gap-2 sm:grid-cols-3"><Kpi label="Routes discovered" value={String(qaResult.routes_discovered_total ?? 0)} /><Kpi label="Routes passed / checked" value={String(qaResult.routes_passed ?? 0) + " / " + String(qaResult.routes_checked ?? 0)} /><Kpi label="Routes failed" value={String(qaResult.routes_failed ?? 0)} /></div>
