@@ -1,4 +1,4 @@
-import { createContext, useContext, useEffect, useState, type ReactNode } from "react";
+import { createContext, useContext, useEffect, useRef, useState, type ReactNode } from "react";
 import type { Session, User } from "@supabase/supabase-js";
 import { supabase } from "@/lib/supabase-browser";
 
@@ -31,77 +31,61 @@ function primaryRole(roles: AuthRole[]): AuthRole | "client" {
 
 export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
-  const [loading, setLoading] = useState(false);
+  const [loading, setLoading] = useState(true);
+  const authorizationRun = useRef(0);
   const [roles, setRoles] = useState<AuthRole[]>([]);
   const [twoFactorVerified, setTwoFactorVerified] = useState(false);
   const [adminMode, setAdminMode] = useState(false);
 
   const refreshAuthorization = async (nextSession: Session | null) => {
+    const run = ++authorizationRun.current;
+    setLoading(true);
     setSession(nextSession);
     setAdminMode(false);
+
     if (!nextSession?.user || !supabase) {
       setRoles([]);
       setTwoFactorVerified(false);
-      return;
-    }
-
-    const { data } = await supabase
-      .from("user_roles")
-      .select("role")
-      .eq("user_id", nextSession.user.id);
-    const assigned = (data ?? [])
-      .map((row) => row.role as AuthRole)
-      .filter((value): value is AuthRole => APP_ROLES.includes(value));
-    setRoles(assigned);
-
-    try {
-      const { data: aal } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
-      setTwoFactorVerified(aal.currentLevel === "aal2");
-    } catch {
-      setTwoFactorVerified(false);
-    }
-  };
-
-  useEffect(() => {
-    if (!supabase) {
       setLoading(false);
       return;
     }
 
-    let mounted = true;
-    let settled = false;
-
-    const finishInitialAuth = () => {
-      if (!settled && mounted) {
-        settled = true;
-        setLoading(false);
+    try {
+      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", nextSession.user.id);
+      if (run !== authorizationRun.current) return;
+      if (error) {
+        setRoles([]);
+        setTwoFactorVerified(false);
+        return;
       }
-    };
+      const assigned = (data ?? []).map((row) => row.role as AuthRole).filter((value): value is AuthRole => APP_ROLES.includes(value));
+      setRoles(assigned);
+      try {
+        const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
+        if (run !== authorizationRun.current) return;
+        setTwoFactorVerified(!aalError && aal.currentLevel === "aal2");
+      } catch {
+        if (run === authorizationRun.current) setTwoFactorVerified(false);
+      }
+    } finally {
+      if (run === authorizationRun.current) setLoading(false);
+    }
+  };
 
-    const timeout = window.setTimeout(finishInitialAuth, 5000);
-
+  useEffect(() => {
+    if (!supabase) { setLoading(false); return; }
+    let mounted = true;
     const { data: listener } = supabase.auth.onAuthStateChange((_event, next) => {
-      if (!mounted) return;
-      setSession(next);
-      finishInitialAuth();
-      void refreshAuthorization(next);
+      if (mounted) void refreshAuthorization(next);
     });
-
-    void supabase.auth
-      .getSession()
-      .then(({ data }) => {
-        if (!mounted) return;
-        setSession(data.session);
-        finishInitialAuth();
-        void refreshAuthorization(data.session);
-      })
-      .catch(() => {
-        finishInitialAuth();
-      });
-
+    void supabase.auth.getSession().then(({ data }) => {
+      if (mounted) void refreshAuthorization(data.session);
+    }).catch(() => {
+      if (mounted) setLoading(false);
+    });
     return () => {
       mounted = false;
-      window.clearTimeout(timeout);
+      authorizationRun.current += 1;
       listener.subscription.unsubscribe();
     };
   }, []);
