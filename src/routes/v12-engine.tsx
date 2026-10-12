@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Bot, Cable, CheckCircle2, CircleAlert, Cloud, Cpu, Database, ExternalLink, FileInput, Gauge, Globe2, HardDrive, Layers3, Linkedin, Network, RefreshCw, Server, ShieldAlert, ShieldCheck, Sparkles, Terminal, Workflow, Zap } from "lucide-react";
+import { Activity, Bot, Cable, CheckCircle2, CircleAlert, Cloud, Cpu, Database, ExternalLink, FileInput, Gauge, Globe2, Layers3, Linkedin, Network, RefreshCw, ShieldAlert, ShieldCheck, Sparkles, Terminal, Workflow, Zap } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase-browser";
 
@@ -299,7 +299,7 @@ function V12EnginePage() {
           <div className="mt-4 flex flex-col gap-2 border-t border-white/10 pt-4 text-xs text-white/35 sm:flex-row sm:items-center sm:justify-between"><span>ResoFit™ · ChatB2K™ · LordB2K V12 · CEO control plane</span><span>{data ? `Snapshot ${when(data.generated_at)}` : "No snapshot"}</span></div>
         </section>
 
-        </>)}
+        </>}
 
         {activeTab === "machines" && (
           <div className="space-y-5">
