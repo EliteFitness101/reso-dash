@@ -18,6 +18,7 @@ type Agent = {
   kill_switch_enabled?: boolean; kill_switch_reason?: string | null; assigned_email?: string | null;
   email_aliases?: {address:string;purpose?:string;visibility?:string;status?:string}[];
   route_endpoints?: {route:string;url:string}[];
+  tool_endpoints?: {tool:string;url:string;access:string}[];
   node?: {parent_node_id?:string;layer?:string;access_level?:string;status?:string;provider_stack?:string[];capability_scope?:Record<string,unknown>;kill_switch_enabled?:boolean} | null;
   historical?: {matched_runs:number;last_run_at?:string|null;latest_runs?:{id:string;run_key:string;engine:string;status:string;started_at:string;completed_at?:string|null;counts?:unknown}[];matched_tasks:number;latest_tasks?:{id:string;task_type:string;channel:string;status:string;due_at?:string|null;created_at:string}[];matched_learning_events:number;latest_learning_events?:{id:string;source:string;event_type:string;topic?:string;action?:string;created_at:string}[]};
   runtime_evidence?: string; metadata?: Record<string,unknown>; contract?: Record<string,unknown>;
@@ -186,6 +187,7 @@ function ChatB2KAgentsPage() {
                   <InfoList title="Registered routes" values={arr(agent.allowed_routes)} empty="No route is declared for this agent."/>
                   <InfoList title="Allowed actions" values={arr(agent.allowed_actions)} empty="No action is declared for this agent."/>
                   <InfoList title="Allowed tables" values={arr(agent.allowed_tables)} empty="No table permissions are declared."/>
+                  <div><div className="mb-1.5 text-[10px] font-bold uppercase tracking-wider text-white/40">Tool endpoint mapping</div>{agent.tool_endpoints?.length ? <div className="space-y-1">{agent.tool_endpoints.map(item => <div key={item.tool} className="rounded-lg border border-white/10 p-2"><div className="text-[10px] font-semibold text-white/75">{item.tool}</div><div className="mt-1 break-all font-mono text-[9px] text-amber-200/80">{item.url || "No endpoint mapping"}</div><div className="mt-1 text-[9px] text-white/35">{item.access}</div></div>)}</div> : <div className="text-[10px] text-white/35">No tools are declared for this agent.</div>}</div>
                   <div className="space-y-1">{agent.route_endpoints?.map(route => <a key={route.route} href={route.url} target="_blank" rel="noreferrer" className="flex items-center justify-between gap-2 rounded-lg border border-white/10 p-2 text-[10px] text-amber-200 hover:bg-white/5"><span className="break-all">{route.route}</span><ExternalLink size={12} className="shrink-0"/></a>)}</div>
                 </div>}
                 {panel === "jobs" && <div className="space-y-3">
