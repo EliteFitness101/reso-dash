@@ -10,13 +10,12 @@ type VerifiedExperience = { product_sku?: string | null; product_name?: string |
 
 function OnboardingPage() {
   const nav = useNavigate();
-  const { current, setIntake } = useProfileStore();
+  const { setIntake } = useProfileStore();
   const [experience, setExperience] = useState<VerifiedExperience | null>(null);
   const [step, setStep] = useState(0);
   const [intake, setIntakeLocal] = useState<Intake>({ fullName: "", email: "", phone: "", age: 26, sex: "female", heightCm: 168, weightKg: 68, bodyFatPct: 24, goal: "recomp", experience: "intermediate", daysPerWeek: 4, restrictions: ["onions"], cuisine: "West-African", mealsPerDay: 3, location: "hybrid", equipment: ["dumbbells", "bench"] });
 
   useEffect(() => { try { const raw = window.sessionStorage.getItem("resofit_verified_experience"); if (raw) setExperience(JSON.parse(raw) as VerifiedExperience); } catch { setExperience(null); } }, []);
-  if (!current) return <div className="glass-card rounded-2xl p-6 text-center text-sm text-muted-foreground">No active subscription. Complete checkout first.<button onClick={() => nav({ to: "/checkout" })} className="mt-4 inline-flex items-center gap-2 rounded-xl gold-bg px-4 py-2 text-xs font-bold uppercase tracking-widest">Go to checkout <ArrowRight size={14} /></button></div>;
   const set = <K extends keyof Intake,>(k: K, v: Intake[K]) => setIntakeLocal((s) => ({ ...s, [k]: v }));
   const advance = () => { if (step < steps.length - 1) { setStep(step + 1); return; } setIntake(intake); nav({ to: "/upsells" }); };
   const plan = step === steps.length - 1 ? generatePlan(intake) : null;
