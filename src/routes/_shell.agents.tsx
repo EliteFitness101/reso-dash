@@ -110,7 +110,7 @@ function ChatB2KAgentsPage() {
         {snapshot?.authority.global_kill_switch && <div className="mt-3 rounded-xl border border-rose-400/20 bg-rose-400/10 p-3 text-xs text-rose-200"><ShieldAlert size={14} className="mr-1 inline"/> Global kill switch is active: {snapshot.authority.global_kill_reason || "No reason recorded"}</div>}
         {snapshot?.authority.can_control && <div className="mt-4 flex gap-2">
           <button disabled={!!actionBusy} onClick={() => void command("set_global_kill_switch", !snapshot.authority.global_kill_switch)} className={`flex-1 rounded-xl px-3 py-2.5 text-xs font-bold transition disabled:opacity-50 ${snapshot.authority.global_kill_switch ? "bg-emerald-300 text-black hover:bg-emerald-200" : "border border-rose-300/30 bg-rose-400/10 text-rose-200 hover:bg-rose-400/20"}`}>
-            {snapshot.authority.global_kill_switch ? <><PlayCircle size={15} className="mr-1 inline"/> Resume all orchestration</> : <><PauseCircle size={15} className="mr-1 inline"/> Global kill switch</>}
+            {snapshot.authority.global_kill_switch ? <><PlayCircle size={15} className="mr-1 inline"/> Resume ChatB2K orchestration</> : <><PauseCircle size={15} className="mr-1 inline"/> Global kill switch</>}
           </button>
         </div>}
       </section>
