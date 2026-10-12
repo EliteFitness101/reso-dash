@@ -242,7 +242,7 @@ function V12EnginePage() {
 
         <section className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
           <div className="mb-3 flex items-center gap-2"><Network className="h-4 w-4 text-amber-300" /><h2 className="text-sm font-semibold">API ownership · drift elimination</h2><Badge warn>Legacy cleanup pending</Badge></div>
-          <p className="mb-4 text-xs text-white/45">Audit snapshot 2026-10-12. The canonical web API is same-origin under resofit.fit/api/*, owned by reso-web and implemented by shopb2k server routes. Assessment/recommendation remains on the canonical Supabase / ChatB2K control plane.</p>
+          <p className="mb-4 text-xs text-white/45">Audit snapshot 2026-10-12. The canonical web API is same-origin under resofit.fit/api/*, owned by reso-web and implemented by shopb2k server routes. Assessment/recommendation remains on the canonical Supabase / ChatB2K control plane. The legacy api.resofit.fit project is failed/unverified and its repository contains a mock payment-success handler; do not use it for payments.</p>
           <div className="grid gap-3 lg:grid-cols-3">
             <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.035] p-3">
               <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-white">Canonical website API</span><Badge good>Source verified</Badge></div>
@@ -253,13 +253,13 @@ function V12EnginePage() {
             <div className="rounded-xl border border-rose-400/15 bg-rose-400/[0.025] p-3">
               <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-white">Vercel project: resofit-api</span><Badge warn>Orphan candidate</Badge></div>
               <div className="mt-2 text-xs text-rose-200">live=false · latest deployment ERROR</div>
-              <p className="mt-2 text-[11px] text-white/45">No custom API domain in its domain inventory; only Vercel aliases. Do not route production consumers here. Deletion is withheld pending external-consumer/log review.</p>
+              <p className="mt-2 text-[11px] text-white/45">No custom API domain; the same source repo and commit sequence also back the legacy automation project. Latest deployments fail and project reports live=false. Do not route production consumers here; decommission only after consumer/log review.</p>
               <a href="https://vercel.com/resonancefitnessng-2206/resofit-api" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[11px] text-amber-200">Inspect project <ExternalLink className="h-3 w-3" /></a>
             </div>
             <div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.025] p-3">
               <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-white">api.resofit.fit</span><Badge warn>Unverified legacy</Badge></div>
-              <div className="mt-2 text-xs text-amber-100">Not attached to a listed Vercel project</div>
-              <p className="mt-2 text-[11px] text-white/45">Found in resoflex-intelligence-node scaffold; stats endpoint returns static counters. DNS/HTTP and external consumers remain unverified. Not approved as canonical.</p>
+              <div className="mt-2 text-xs text-amber-100">Attached to legacy automation project</div>
+              <p className="mt-2 text-[11px] text-white/45">Assigned to resonance-fitness-automation (latest deploy ERROR, live=false). Its source contains a mock payment-verification handler that returns SUCCESS without verifying payment. Treat as unsafe legacy surface until disabled/redirected and externally tested. A separate resoflex-intelligence-node scaffold also references this hostname.</p>
               <a href="https://github.com/EliteFitness101/resoflex-intelligence-node" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[11px] text-amber-200">Inspect legacy source <ExternalLink className="h-3 w-3" /></a>
             </div>
           </div>
