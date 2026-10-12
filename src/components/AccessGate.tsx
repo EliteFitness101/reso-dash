@@ -28,7 +28,8 @@ export function AccessGate({ children }: { children: ReactNode }) {
 
   const refreshEntitlement = async () => {
     if (!supabase || !user || !session) return false;
-    // CEO Growth enforces real MFA/AAL2 separately before exposing privileged controls.\n    if (hasAssignedRole || isSuperAdmin) {
+    // CEO Growth enforces real MFA/AAL2 separately before exposing privileged controls.
+    if (hasAssignedRole || isSuperAdmin) {
       setEntitled(true);
       setMessage("");
       return true;
