@@ -25,6 +25,7 @@ type Snapshot = {
   social: { total_destinations: number; active_destinations: number; verified_destinations: number; by_platform: { platform: string; total: number; active: number; verified: number }[]; destinations: Destination[]; last_sync: { created_at: string; payload: Record<string, unknown> } | null; query_ok: boolean };
   portfolio: { source_observations_24h: number; generated_drafts: number; reviewed_drafts: number; latest_draft: { id: string; source: string; event_type: string; topic: string; created_at: string; linkedin_headline?: string | null; source_urls?: string[] } | null; recent_events: { id: string; source: string; event_type: string; topic: string; created_at: string }[]; query_ok: boolean };
   endpoints: { name: string; slug: string; path: string; method: string; purpose?: string }[];
+  qa?: { latest_checks: { service_name: string; status: string; latency_ms: number | null; version: string | null; metadata: Record<string, unknown>; checked_at: string }[]; query_ok: boolean };
 };
 
 const when = (value?: string | null) => value ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "No runtime evidence";
@@ -34,7 +35,8 @@ function V12EnginePage() {
   const { session, loading: authLoading, isAdmin, isSuperAdmin, twoFactorVerified } = useAuth();
   const [data, setData] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<"sync" | "portfolio" | null>(null);
+  const [busy, setBusy] = useState<"sync" | "portfolio" | "qa" | null>(null);
+  const [qaResult, setQaResult] = useState<any>(null);
   const [error, setError] = useState("");
   const [actionMessage, setActionMessage] = useState("");
 
@@ -51,23 +53,32 @@ function V12EnginePage() {
 
   useEffect(() => { void load(); }, [session?.access_token]);
 
-  const runAction = async (action: "sync" | "portfolio") => {
+  const runAction = async (action: "sync" | "portfolio" | "qa") => {
     if (!supabase) { setError("Supabase is not configured in this deployment."); return; }
     setBusy(action); setActionMessage(""); setError("");
-    const isPortfolio = action === "portfolio";
-    const { data: result, error: fnError } = await supabase.functions.invoke(
-      isPortfolio ? "chatb2k-portfolio-intelligence" : "chatb2k-professional-authority-sync",
-      { body: isPortfolio
-        ? { action: "portfolio_refresh", query: "Audit the public ResoFit, ResoFlex and ChatB2K CEO portfolio. Cite source URLs, separate first-party claims from independent corroboration, and prepare a conservative LinkedIn draft. Do not publish or edit profiles." }
-        : { refresh_portfolio: false, source: "v12-ceo-dashboard" } }
-    );
-    if (fnError) setError(fnError.message);
-    else if (result?.error || result?.ok === false) setError(String(result?.error || "The action did not complete successfully."));
-    else setActionMessage(isPortfolio
-      ? `Portfolio refresh returned: ${result?.usable_sources ?? result?.scraped ?? "—"} usable sources; AI enrichment ${result?.ai_enrichment?.ok ? "completed" : "needs review"}.`
-      : `Channel sync returned: ${result?.registry_rows_synced ?? "—"} registry rows synced; ${result?.errors?.length ?? 0} errors.`);
-    setBusy(null);
-    await load();
+    try {
+      if (action === "qa") {
+        setQaResult(null);
+        const { data: result, error: fnError } = await supabase.functions.invoke("resofit-ecosystem-qa", { body: { action: "full_audit", max_routes: 150 } });
+        if (fnError) setError(fnError.message);
+        else if (result?.error || result?.ok === false) setError(String(result?.error || "Ecosystem QA did not complete."));
+        else {
+          setQaResult(result);
+          setActionMessage("QA completed: " + (result?.routes_passed ?? 0) + "/" + (result?.routes_checked ?? 0) + " routes passed; " + (result?.routes_failed ?? 0) + " failed; " + (result?.performance?.length ?? 0) + " mobile PageSpeed checks returned.");
+        }
+      } else {
+        const isPortfolio = action === "portfolio";
+        const { data: result, error: fnError } = await supabase.functions.invoke(isPortfolio ? "chatb2k-portfolio-intelligence" : "chatb2k-professional-authority-sync", { body: isPortfolio
+          ? { action: "portfolio_refresh", query: "Audit the public ResoFit, ResoFlex and ChatB2K CEO portfolio. Cite source URLs, separate first-party claims from independent corroboration, and prepare a conservative LinkedIn draft. Do not publish or edit profiles." }
+          : { refresh_portfolio: false, source: "v12-ceo-dashboard" } });
+        if (fnError) setError(fnError.message);
+        else if (result?.error || result?.ok === false) setError(String(result?.error || "The action did not complete successfully."));
+        else setActionMessage(isPortfolio
+          ? "Portfolio refresh returned: " + (result?.usable_sources ?? result?.scraped ?? "—") + " usable sources; AI enrichment " + (result?.ai_enrichment?.ok ? "completed" : "needs review") + "."
+          : "Channel sync returned: " + (result?.registry_rows_synced ?? "—") + " registry rows synced; " + (result?.errors?.length ?? 0) + " errors.");
+      }
+    } catch (e) { setError(e instanceof Error ? e.message : "The requested operation failed."); }
+    finally { setBusy(null); await load(); }
   };
 
   const engineStatus = useMemo(() => {
@@ -174,9 +185,44 @@ function V12EnginePage() {
               <button onClick={() => void runAction("portfolio")} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-lg border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs text-amber-100 hover:bg-amber-300/15 disabled:opacity-50"><Sparkles className={busy === "portfolio" ? "h-3 w-3 animate-pulse" : "h-3 w-3"} /> {busy === "portfolio" ? "Refreshing…" : "Refresh portfolio evidence"}</button>
             </div>
             <div className="mt-4 space-y-2">
-              {(data?.endpoints ?? []).filter(e => ["chatb2k-professional-authority-sync", "chatb2k-portfolio-intelligence", "chatb2k-orchestrator", "buffer-publisher"].includes(e.slug)).map(e => <div key={e.slug} className="rounded-lg border border-white/7 px-3 py-2"><div className="text-xs font-medium">{e.name}</div><div className="mt-1 break-all font-mono text-[10px] text-amber-200/70">{e.path}</div><div className="mt-1 text-[10px] text-white/35">{e.method} · {e.purpose}</div></div>)}
+              {(data?.endpoints ?? []).filter(e => ["chatb2k-professional-authority-sync", "chatb2k-portfolio-intelligence", "chatb2k-orchestrator", "buffer-publisher", "resofit-ecosystem-qa"].includes(e.slug)).map(e => <div key={e.slug} className="rounded-lg border border-white/7 px-3 py-2"><div className="text-xs font-medium">{e.name}</div><div className="mt-1 break-all font-mono text-[10px] text-amber-200/70">{e.path}</div><div className="mt-1 text-[10px] text-white/35">{e.method} · {e.purpose}</div></div>)}
             </div>
             <p className="mt-3 text-[11px] text-white/35">Refresh actions crawl public sources or reconcile channels; they do not modify LinkedIn profile fields or Google Business details, and do not publish posts.</p>
+          </Panel>
+        </section>
+
+        <section className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_1fr]">
+          <Panel title="Ecosystem reliability · Firecrawl + independent performance" icon={Gauge}>
+            <p className="mb-3 text-xs text-white/45">Manual, read-only audit of public routes, origin reachability and mobile Lighthouse scores. No forms submitted or payments initiated.</p>
+            <div className="flex flex-wrap gap-2">
+              <button onClick={() => void runAction("qa")} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-lg border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs text-amber-100 hover:bg-amber-300/15 disabled:opacity-50"><Gauge className={busy === "qa" ? "h-3 w-3 animate-pulse" : "h-3 w-3"} /> {busy === "qa" ? "Auditing routes + speed…" : "Run full ecosystem QA"}</button>
+              <a href="https://pagespeed.web.dev/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/[0.05]">PageSpeed Insights <ExternalLink className="h-3 w-3" /></a>
+              <a href="https://www.browserstack.com/automate/playwright" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/[0.05]">Real-device browser QA <ExternalLink className="h-3 w-3" /></a>
+            </div>
+            {qaResult && <div className="mt-4 rounded-xl border border-white/10 p-3">
+              <div className="text-xs font-semibold uppercase tracking-wider text-white/50">Latest manual audit</div>
+              <div className="mt-3 grid gap-2 sm:grid-cols-3"><Kpi label="Routes discovered" value={String(qaResult.routes_discovered_total ?? 0)} /><Kpi label="Routes passed / checked" value={String(qaResult.routes_passed ?? 0) + " / " + String(qaResult.routes_checked ?? 0)} /><Kpi label="Routes failed" value={String(qaResult.routes_failed ?? 0)} /></div>
+              {qaResult.route_audit_truncated && <p className="mt-2 text-xs text-amber-200">The route map exceeds this run's 150-route sample. Run follow-up batches before declaring full coverage.</p>}
+              <div className="mt-3 space-y-2">
+                {(qaResult.performance ?? []).map((p: any) => <div key={p.url} className="rounded-lg border border-white/7 px-3 py-2"><div className="break-all text-xs font-medium">{p.url}</div>{p.ok ? <div className="mt-1 text-[11px] text-white/55">Mobile scores · Performance {p.scores?.performance ?? "—"} · Accessibility {p.scores?.accessibility ?? "—"} · Best practices {p.scores?.best_practices ?? "—"} · SEO {p.scores?.seo ?? "—"} · LCP {p.metrics?.largest_contentful_paint ?? "—"}</div> : <div className="mt-1 text-[11px] text-rose-300">{p.error || "PageSpeed check failed"}</div>}</div>)}
+              </div>
+              {(qaResult.route_results ?? []).filter((r: any) => !r.ok).slice(0,10).map((r: any) => <div key={r.url} className="break-all py-1 text-[11px] text-rose-200/80">{r.status_code ?? "no status"} · {r.url} · {r.error || "check failed"}</div>)}
+              <p className="mt-3 text-[10px] text-white/35">Started {when(qaResult.started_at)} · Mobile Lighthouse is lab data, not proof of live-user INP or assessment completion.</p>
+            </div>}
+            <div className="mt-4 rounded-xl border border-white/10 p-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/45">Persisted health checks</div>
+              <div className="space-y-2">
+                {(data?.qa?.latest_checks ?? []).slice(0,12).map((c) => <div key={c.service_name + c.checked_at} className="flex flex-col gap-1 rounded-lg border border-white/7 px-3 py-2 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="break-all text-xs font-medium">{c.service_name}</div><div className="text-[10px] text-white/35">{when(c.checked_at)} · {c.version || "version unreported"}</div></div><div className="flex items-center gap-2"><span className="text-[11px] text-white/50">{c.latency_ms == null ? "—" : String(Math.round(Number(c.latency_ms))) + " ms"}</span><Badge good={c.status === "healthy"} warn={c.status === "failed"}>{c.status.toUpperCase()}</Badge></div></div>)}
+                {!data?.qa?.latest_checks?.length && <p className="text-sm text-white/40">No persisted QA health checks yet. Run the audit to populate this section.</p>}
+              </div>
+            </div>
+          </Panel>
+          <Panel title="CEO operations · external test surfaces" icon={ShieldCheck}>
+            <div className="space-y-3 text-sm text-white/65">
+              <div><div className="font-medium text-white">Customer assessment</div><p className="mt-1 text-xs text-white/45">Acceptance test: assessment input → recommendation → product/program routing → consent/lead capture, without making a live payment.</p></div>
+              <div><div className="font-medium text-white">Independent browsers</div><p className="mt-1 text-xs text-white/45">Run desktop Chromium, Firefox and WebKit, plus real iOS Safari and Android. Preserve screenshots, traces, console errors and failed network requests.</p></div>
+              <div><div className="font-medium text-white">External execution</div><p className="mt-1 text-xs text-white/45">The QA suite runs from a hosted environment, independent of the CEO's iPhone and mobile connection.</p></div>
+            </div>
           </Panel>
         </section>
 
