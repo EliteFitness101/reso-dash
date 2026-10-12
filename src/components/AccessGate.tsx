@@ -17,7 +17,7 @@ type Experience = {
 };
 
 export function AccessGate({ children }: { children: ReactNode }) {
-  const { session, user, loading, roles, signInWithMagicLink, signOut } = useAuth();
+  const { session, user, loading, roles, isSuperAdmin, signInWithMagicLink, signOut } = useAuth();
   const [email, setEmail] = useState("");
   const [sending, setSending] = useState(false);
   const [checking, setChecking] = useState(false);
@@ -28,7 +28,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
 
   const refreshEntitlement = async () => {
     if (!supabase || !user || !session) return false;
-    if (hasAssignedRole) {
+    // CEO Growth enforces real MFA/AAL2 separately before exposing privileged controls.\n    if (hasAssignedRole || isSuperAdmin) {
       setEntitled(true);
       setMessage("");
       return true;
@@ -69,7 +69,7 @@ export function AccessGate({ children }: { children: ReactNode }) {
       return;
     }
     void refreshEntitlement();
-  }, [user?.id, roles.join(",")]);
+  }, [user?.id, roles.join(","), isSuperAdmin, loading]);
 
   if (loading) {
     return <div className="flex min-h-dvh items-center justify-center text-sm text-muted-foreground">Checking secure access…</div>;
