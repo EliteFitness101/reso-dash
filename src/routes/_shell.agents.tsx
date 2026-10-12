@@ -25,7 +25,7 @@ type Agent = {
 type Snapshot = {
   ok: boolean; generated_at: string;
   authority: {caller_email:string;can_control:boolean;global_kill_switch:boolean;global_kill_reason?:string|null;global_kill_switched_at?:string|null};
-  summary: {requested_agent_ids:number;registered_agents:number;missing_agent_ids:string[];enabled_and_registry_callable:number;disabled:number;killed:number;unhealthy:number;agents_with_assigned_email:number;agents_with_tools:number;agents_with_routes:number;recent_run_records:number;recent_task_records:number;learning_events:number;kill_switch_events:number;tool_gateway_audit_events:number};
+  summary: {requested_agents:number;registered_agents:number;missing_agent_ids:string[];enabled_and_registry_callable:number;disabled:number;killed:number;unhealthy:number;agents_with_assigned_email:number;agents_with_tools:number;agents_with_routes:number;recent_run_records:number;recent_task_records:number;learning_events:number;kill_switch_events:number;tool_gateway_audit_events:number};
   agents: Agent[];
   routes: {route_id:string;provider:string;service_type:string;status:string;owner_node_id?:string;endpoint_class?:string;endpoint_url?:string;updated_at:string}[];
   recent_runs: {id:string;run_key:string;engine:string;status:string;started_at:string;completed_at?:string|null;counts?:unknown}[];
