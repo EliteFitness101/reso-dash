@@ -64,8 +64,10 @@ export function AccessGate({ children }: { children: ReactNode }) {
   };
 
   useEffect(() => {
+    if (loading) return;
     if (!user) {
       setEntitled(false);
+      setMessage("");
       return;
     }
     void refreshEntitlement();
