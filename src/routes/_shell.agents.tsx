@@ -25,7 +25,7 @@ type Agent = {
 type Snapshot = {
   ok: boolean; generated_at: string;
   authority: {caller_email:string;can_control:boolean;global_kill_switch:boolean;global_kill_reason?:string|null;global_kill_switched_at?:string|null};
-  summary: {requested_agents:number;registered_agents:number;missing_agent_ids:string[];enabled_and_registry_callable:number;disabled:number;killed:number;unhealthy:number;agents_with_assigned_email:number;agents_with_tools:number;agents_with_routes:number;recent_run_records:number;recent_task_records:number;learning_events:number;kill_switch_events:number;tool_gateway_audit_events:number};
+  summary: {requested_agent_ids:number;registered_agents:number;missing_agent_ids:string[];enabled_and_registry_callable:number;disabled:number;killed:number;unhealthy:number;agents_with_assigned_email:number;agents_with_tools:number;agents_with_routes:number;recent_run_records:number;recent_task_records:number;learning_events:number;kill_switch_events:number;tool_gateway_audit_events:number};
   agents: Agent[];
   routes: {route_id:string;provider:string;service_type:string;status:string;owner_node_id?:string;endpoint_class?:string;endpoint_url?:string;updated_at:string}[];
   recent_runs: {id:string;run_key:string;engine:string;status:string;started_at:string;completed_at?:string|null;counts?:unknown}[];
@@ -97,7 +97,7 @@ function ChatB2KAgentsPage() {
           <div>
             <div className="flex items-center gap-2 text-[10px] font-bold uppercase tracking-[0.24em] text-amber-300"><Bot size={14}/> LordB2K · State Command</div>
             <h1 className="mt-2 text-2xl font-black tracking-tight text-white">Agent Command Center</h1>
-            <p className="mt-1 text-xs leading-relaxed text-white/55">chatb2k101 · 72-agent target range · live registry, route, job and control evidence</p>
+            <p className="mt-1 text-xs leading-relaxed text-white/55">chatb2k101 · 72-agent workforce + chatb2k101 root controller · live registry, route, job and control evidence</p>
           </div>
           <button onClick={() => void refresh()} disabled={busy} aria-label="Refresh agent data" className="rounded-xl border border-white/10 bg-white/5 p-2.5 text-amber-200 hover:bg-white/10 disabled:opacity-50"><RefreshCw size={17} className={busy ? "animate-spin" : ""}/></button>
         </div>
@@ -177,7 +177,7 @@ function ChatB2KAgentsPage() {
                   <div className="rounded-xl bg-black/30 p-3">
                     <div className="mb-1 text-[10px] font-bold uppercase tracking-wider text-white/40">Assigned mail</div>
                     <div className="break-words text-white/80">{agent.assigned_email || "No individual control email assigned"}</div>
-                    {agent.email_aliases?.length ? <div className="mt-2 space-y-1">{agent.email_aliases.map(alias => <div key={alias.address} className="flex flex-wrap justify-between gap-2 text-[10px] text-white/50"><span>{alias.address}</span><span>{alias.purpose || alias.visibility || alias.status}</span></div>) : <div className="mt-1 text-[10px] text-white/35">No email aliases routed to this agent.</div>}
+                    {agent.email_aliases?.length ? <div className="mt-2 space-y-1">{agent.email_aliases.map(alias => <div key={alias.address} className="flex flex-wrap justify-between gap-2 text-[10px] text-white/50"><span>{alias.address}</span><span>{alias.purpose || alias.visibility || alias.status}</span></div>)}</div> : <div className="mt-1 text-[10px] text-white/35">No email aliases routed to this agent.</div>
                   </div>
                   <div className="text-[10px] text-white/35">Execution evidence: {agent.runtime_evidence === "historical_agent_id_match" ? "historical records reference this agent ID" : "no per-agent attribution found in sampled runs/tasks/learning events"}</div>
                 </div>}
