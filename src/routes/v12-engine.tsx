@@ -241,6 +241,35 @@ function V12EnginePage() {
         </section>
 
         <section className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
+          <div className="mb-3 flex items-center gap-2"><Network className="h-4 w-4 text-amber-300" /><h2 className="text-sm font-semibold">API ownership · drift elimination</h2><Badge warn>Legacy cleanup pending</Badge></div>
+          <p className="mb-4 text-xs text-white/45">Audit snapshot 2026-10-12. The canonical web API is same-origin under resofit.fit/api/*, owned by reso-web and implemented by shopb2k server routes. Assessment/recommendation remains on the canonical Supabase / ChatB2K control plane.</p>
+          <div className="grid gap-3 lg:grid-cols-3">
+            <div className="rounded-xl border border-emerald-400/15 bg-emerald-400/[0.035] p-3">
+              <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-white">Canonical website API</span><Badge good>Source verified</Badge></div>
+              <div className="mt-2 break-all text-xs text-emerald-200">https://www.resofit.fit/api/*</div>
+              <p className="mt-2 text-[11px] text-white/45">Owned by reso-web · handlers in shopb2k. Examples: /api/cart, /api/makaveli/checkout, /api/makaveli/verify, /api/asset-sync-cron.</p>
+              <a href="https://www.resofit.fit" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[11px] text-amber-200">Open canonical site <ExternalLink className="h-3 w-3" /></a>
+            </div>
+            <div className="rounded-xl border border-rose-400/15 bg-rose-400/[0.025] p-3">
+              <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-white">Vercel project: resofit-api</span><Badge warn>Orphan candidate</Badge></div>
+              <div className="mt-2 text-xs text-rose-200">live=false · latest deployment ERROR</div>
+              <p className="mt-2 text-[11px] text-white/45">No custom API domain in its domain inventory; only Vercel aliases. Do not route production consumers here. Deletion is withheld pending external-consumer/log review.</p>
+              <a href="https://vercel.com/resonancefitnessng-2206/resofit-api" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[11px] text-amber-200">Inspect project <ExternalLink className="h-3 w-3" /></a>
+            </div>
+            <div className="rounded-xl border border-amber-300/15 bg-amber-300/[0.025] p-3">
+              <div className="flex items-center justify-between gap-2"><span className="text-xs font-semibold text-white">api.resofit.fit</span><Badge warn>Unverified legacy</Badge></div>
+              <div className="mt-2 text-xs text-amber-100">Not attached to a listed Vercel project</div>
+              <p className="mt-2 text-[11px] text-white/45">Found in resoflex-intelligence-node scaffold; stats endpoint returns static counters. DNS/HTTP and external consumers remain unverified. Not approved as canonical.</p>
+              <a href="https://github.com/EliteFitness101/resoflex-intelligence-node" target="_blank" rel="noreferrer" className="mt-3 inline-flex items-center gap-1 text-[11px] text-amber-200">Inspect legacy source <ExternalLink className="h-3 w-3" /></a>
+            </div>
+          </div>
+          <div className="mt-4 rounded-xl border border-white/10 p-3">
+            <div className="text-xs font-semibold uppercase tracking-wider text-white/45">Decommission guardrail</div>
+            <p className="mt-2 text-xs text-white/60">Do not delete legacy project/repository or change DNS until access logs, cron jobs, OAuth/webhook callbacks, secrets, and external consumers have been checked. Canonical architecture and evidence ledger are recorded in <a href="https://github.com/EliteFitness101/shopb2k/blob/main/docs/API-OWNERSHIP.md" target="_blank" rel="noreferrer" className="text-amber-200 underline">docs/API-OWNERSHIP.md</a>.</p>
+          </div>
+        </section>
+
+        <section className="mt-5 rounded-2xl border border-white/10 bg-white/[0.025] p-4 sm:p-5">
           <div className="mb-3 flex items-center gap-2"><Layers3 className="h-4 w-4 text-amber-300" /><h2 className="text-sm font-semibold">Runtime gates and CEO review</h2></div>
           <div className="grid gap-2 sm:grid-cols-2 lg:grid-cols-4">
             {Object.entries(data?.gate ?? {}).map(([key, value]) => <div key={key} className="flex items-center justify-between gap-2 rounded-lg border border-white/7 px-3 py-2"><span className="text-xs text-white/55">{key.replaceAll("_", " ")}</span><Badge good={Boolean(value)}>{value ? "PASS" : "CHECK"}</Badge></div>)}
