@@ -142,7 +142,8 @@ function V12EnginePage() {
         {error && <div className="mb-4 rounded-xl border border-rose-400/25 bg-rose-400/5 p-3 text-sm text-rose-200"><CircleAlert className="mr-2 inline h-4 w-4" />{error}</div>}
         {actionMessage && <div className="mb-4 rounded-xl border border-emerald-400/20 bg-emerald-400/5 p-3 text-sm text-emerald-200">{actionMessage}</div>}
 
-        {activeTab === "overview" && (<>\n        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
+        {activeTab === "overview" && <>
+        <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
           <Metric icon={Gauge} label="V12 control state" value={engineStatus} sub={data?.engine ?? "loading snapshot"} good={engineStatus === "OPERATIONAL"} warn={engineStatus === "GLOBAL HALT"} />
           <Metric icon={Bot} label="Agent swarm" value={data ? `${data.orchestration.swarm_enabled}/${data.orchestration.swarm_population}` : "—"} sub={`${data?.orchestration.nodes ?? "—"} orchestration nodes`} good={Boolean(data && data.orchestration.swarm_population === 72)} />
           <Metric icon={ShieldCheck} label="Global kill switch" value={data?.orchestration.global_kill ? "ENGAGED" : data ? "DISENGAGED" : "—"} sub={data?.orchestration.global_kill_reason || "Read from canonical control plane"} good={Boolean(data && !data.orchestration.global_kill)} warn={Boolean(data?.orchestration.global_kill)} />
