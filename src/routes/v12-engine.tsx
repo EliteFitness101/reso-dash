@@ -1,6 +1,6 @@
 import { createFileRoute } from "@tanstack/react-router";
 import { useEffect, useMemo, useState } from "react";
-import { Activity, Bot, CircleAlert, Database, ExternalLink, Gauge, Globe2, Layers3, Linkedin, RefreshCw, ShieldCheck, Sparkles, Workflow } from "lucide-react";
+import { Activity, Bot, CircleAlert, Database, ExternalLink, Gauge, Globe2, Layers3, Linkedin, Network, RefreshCw, ShieldCheck, Sparkles, Workflow } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase-browser";
 
