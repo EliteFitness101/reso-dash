@@ -29,16 +29,17 @@ function OnboardingPage() {
 
   useEffect(() => {
     let active = true;
-    if (!session || !supabase) { setExperience(null); setClaimLoading(false); return () => { active = false; }; }
+    const client = supabase;
+    if (!session || !client) { setExperience(null); setClaimLoading(false); return () => { active = false; }; }
     setClaimLoading(true); setClaimError("");
-    void supabase.functions.invoke("claim-dashboard-entitlement").then(async ({ data, error }) => {
+    void client.functions.invoke("claim-dashboard-entitlement").then(async ({ data, error }) => {
       if (!active) return;
       if (error) { setExperience(null); setClaimError(error.message); return; }
       const verified = data?.plan_entitled ? (data?.plan_experience ?? data?.experience) as VerifiedExperience | null : null;
       if (verified?.product_sku && verified?.entitlement_id) {
         setExperience(verified); setClaimError("");
         try { window.sessionStorage.setItem("resofit_verified_experience", JSON.stringify(verified)); } catch { /* Verified data is also held in React state. */ }
-        const { data: existingPlan, error: planLookupError } = await supabase.functions.invoke("resofit-personal-plan", { body: { action: "get", product_sku: verified.product_sku } });
+        const { data: existingPlan, error: planLookupError } = await client.functions.invoke("resofit-personal-plan", { body: { action: "get", product_sku: verified.product_sku } });
         if (!active) return;
         if (!planLookupError && existingPlan?.ok && existingPlan?.plan_id && existingPlan?.plan) {
           setServerPlan(existingPlan as ServerPlanResult);
@@ -54,7 +55,7 @@ function OnboardingPage() {
     return () => { active = false; };
   }, [session?.access_token]);
 
-  useEffect(() => { if (session?.user.email) setIntakeLocal((value) => ({ ...value, email: value.email || session.user.email || "" })); }, [session?.user.email]);
+  useEffect(() => { const userEmail = session?.user.email; if (userEmail) setIntakeLocal((value) => ({ ...value, email: value.email || userEmail })); }, [session?.user.email]);
 
   const set = <K extends keyof Intake,>(k: K, v: Intake[K]) => setIntakeLocal((s) => ({ ...s, [k]: v }));
   const sendSignInLink = async () => {
