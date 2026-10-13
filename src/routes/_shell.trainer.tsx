@@ -52,6 +52,8 @@ type PlanResponse = {
     design_id: string;
     public_view_url: string;
     embed_url: string;
+    supporting_guide_url: string;
+    supporting_guide_title: string;
     personalization: "generic_supplier_fallback";
     access_policy: "only_returned_after_authenticated_active_entitlement";
     limitation: string;
@@ -211,7 +213,7 @@ function PlanView({ plan, accessories, generatorFallbacks }: { plan: NonNullable
         <div className="overflow-hidden rounded-xl border border-border bg-background">
           <iframe src={fallback.embed_url} title={fallback.title} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="fullscreen" className="aspect-video w-full" />
         </div>
-        <a href={fallback.public_view_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-gold/30 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gold">Open generator <ArrowRight size={13} /></a>
+        <div className="flex flex-wrap gap-2"><a href={fallback.public_view_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-gold/30 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gold">Open generator <ArrowRight size={13} /></a><a href={fallback.supporting_guide_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Open {fallback.supporting_guide_title}</a></div>
         <p className="text-[10px] leading-4 text-muted-foreground">{fallback.limitation}</p>
       </article>)}
     </div>}
