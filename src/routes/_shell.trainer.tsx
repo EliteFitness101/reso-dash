@@ -45,6 +45,17 @@ type PlanResponse = {
     lifestyleHacks: string[];
   };
   accessories?: Array<{ sku: string; handle: string; title: string; variant_price: number; image_src?: string | null }>;
+  generator_fallbacks?: Array<{
+    provider: "Canva";
+    kind: "public_view_generator";
+    title: string;
+    design_id: string;
+    public_view_url: string;
+    embed_url: string;
+    personalization: "generic_supplier_fallback";
+    access_policy: "only_returned_after_authenticated_active_entitlement";
+    limitation: string;
+  }>;
 };
 
 const defaults: Intake = {
@@ -152,12 +163,12 @@ function TrainerPage() {
 
       {result?.code === "PAST_DUE" && <div className="glass-card rounded-3xl border border-amber-400/30 p-5"><ShieldAlert className="text-amber-300" size={20} /><h2 className="mt-3 font-display text-lg font-semibold">Plan access is restricted</h2><p className="mt-2 text-xs leading-5 text-muted-foreground">Your account and plan history remain intact. Resolve the outstanding commerce state to restore active plan generation.</p>{result.commerce_action_url && <a href={result.commerce_action_url} className="mt-4 inline-flex rounded-xl border border-amber-400/30 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-amber-300">Resolve payment</a>}</div>}
 
-      {result?.plan && <PlanView plan={result.plan} accessories={result.accessories ?? []} />}
+      {result?.plan && <PlanView plan={result.plan} accessories={result.accessories ?? []} generatorFallbacks={result.generator_fallbacks ?? []} />}
     </section>
   );
 }
 
-function PlanView({ plan, accessories }: { plan: NonNullable<PlanResponse["plan"]>; accessories: NonNullable<PlanResponse["accessories"]> }) {
+function PlanView({ plan, accessories, generatorFallbacks }: { plan: NonNullable<PlanResponse["plan"]>; accessories: NonNullable<PlanResponse["accessories"]>; generatorFallbacks: NonNullable<PlanResponse["generator_fallbacks"]> }) {
   return <div className="space-y-4">
     <div className="glass-card-gold rounded-3xl p-5">
       <div className="flex items-center gap-2 text-[10px] uppercase tracking-[0.25em] text-gold"><Sparkles size={13} /> Saved personalized plan</div>
@@ -191,6 +202,19 @@ function PlanView({ plan, accessories }: { plan: NonNullable<PlanResponse["plan"
       <ul className="mt-3 space-y-2 text-[11px] text-muted-foreground">{plan.shoppingList.map((x) => <li key={x}>• {x}</li>)}</ul>
       <div className="mt-4 border-t border-border pt-4"><p className="text-[9px] uppercase tracking-widest text-gold">Prep system</p><ul className="mt-2 space-y-2 text-[11px] text-muted-foreground">{plan.mealPrep.map((x) => <li key={x}>• {x}</li>)}</ul></div>
     </div>
+
+    {generatorFallbacks.length > 0 && <div className="glass-card-gold rounded-3xl p-5">
+      <div className="flex items-center gap-2"><Sparkles size={15} className="text-gold" /><h2 className="font-display text-lg font-semibold">Supplier generator fallback</h2></div>
+      <p className="mt-2 text-[11px] leading-5 text-muted-foreground">Your active plan is saved in ResoFit. If you want to open the supplier's companion generator, use the embedded public view below or open it directly.</p>
+      {generatorFallbacks.map((fallback) => <article key={fallback.design_id} className="mt-4 space-y-3">
+        <h3 className="text-xs font-semibold">{fallback.title}</h3>
+        <div className="overflow-hidden rounded-xl border border-border bg-background">
+          <iframe src={fallback.embed_url} title={fallback.title} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="fullscreen" className="aspect-video w-full" />
+        </div>
+        <a href={fallback.public_view_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-gold/30 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gold">Open generator <ArrowRight size={13} /></a>
+        <p className="text-[10px] leading-4 text-muted-foreground">{fallback.limitation}</p>
+      </article>)}
+    </div>}
 
     <div className="glass-card rounded-3xl p-5">
       <div className="flex items-center gap-2"><Dumbbell size={15} className="text-gold" /><h2 className="font-display text-lg font-semibold">Consistency accessories</h2></div>
