@@ -19,7 +19,7 @@ The Canva designs are legacy visual references, not fillable templates or proof 
 
 - Authenticate through Supabase Auth.
 - Invoke `claim-dashboard-entitlement` to reconcile a verified purchase and retrieve an exact product SKU with a product-specific entitlement.
-- Invoke `resofit-personal-plan` with that exact SKU and only the plan-required intake fields. The backend independently checks `resofit_entitlement_states`, builds the plan, and upserts `resofit_personalized_plans`.
+- Invoke `resofit-personal-plan` with `action=get` to retrieve a previously saved plan, or with the exact SKU and only plan-required intake fields to generate/update a plan. Version 6 checks `resofit_entitlement_states` before either operation and persists generated plans in `resofit_personalized_plans`.
 - Display the returned saved plan ID, meal/workout days and shopping list. Never claim success unless the function returns `ok=true` and a `plan_id`.
 - The local profile store remains compatibility state only; it does not grant access.
 
