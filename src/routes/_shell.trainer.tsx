@@ -46,15 +46,9 @@ type PlanResponse = {
   };
   accessories?: Array<{ sku: string; handle: string; title: string; variant_price: number; image_src?: string | null }>;
   generator_fallbacks?: Array<{
-    provider: "Canva";
-    kind: "public_view_generator";
     title: string;
-    design_id: string;
     public_view_url: string;
-    embed_url: string;
-    supporting_guide_url: string;
-    supporting_guide_title: string;
-    personalization: "generic_supplier_fallback";
+    embed_url: string | null;
     access_policy: "only_returned_after_authenticated_active_entitlement";
     limitation: string;
   }>;
@@ -129,7 +123,7 @@ function TrainerPage() {
       <header className="glass-card-gold rounded-3xl p-5">
         <p className="text-[10px] uppercase tracking-[0.3em] text-gold">ResoFit Personalized Trainer</p>
         <h1 className="mt-2 font-display text-3xl font-semibold leading-tight">Your meals, movement and consistency system.</h1>
-        <p className="mt-2 text-xs leading-5 text-muted-foreground">Canva generator logic consolidated into the canonical ResoFit production experience. No second commerce or catalog is created here.</p>
+        <p className="mt-2 text-xs leading-5 text-muted-foreground">Verified supplier flows are connected to the canonical ResoFit experience. No second commerce or catalog is created here.</p>
         <div className="mt-4 flex flex-wrap gap-2 text-[10px]">
           <span className="rounded-full border border-gold/20 bg-gold/5 px-3 py-1 text-gold">{name}</span>
           <span className="rounded-full bg-zinc-800 px-3 py-1 text-zinc-300">{goalLabel}</span>
@@ -206,14 +200,14 @@ function PlanView({ plan, accessories, generatorFallbacks }: { plan: NonNullable
     </div>
 
     {generatorFallbacks.length > 0 && <div className="glass-card-gold rounded-3xl p-5">
-      <div className="flex items-center gap-2"><Sparkles size={15} className="text-gold" /><h2 className="font-display text-lg font-semibold">Supplier generator fallback</h2></div>
-      <p className="mt-2 text-[11px] leading-5 text-muted-foreground">Your active plan is saved in ResoFit. If you want to open the supplier's companion generator, use the embedded public view below or open it directly.</p>
+      <div className="flex items-center gap-2"><Sparkles size={15} className="text-gold" /><h2 className="font-display text-lg font-semibold">ResoFit supplier flows</h2></div>
+      <p className="mt-2 text-[11px] leading-5 text-muted-foreground">Your active plan is saved in ResoFit. Use these supplier flows as companion resources when applicable.</p>
       {generatorFallbacks.map((fallback) => <article key={fallback.design_id} className="mt-4 space-y-3">
         <h3 className="text-xs font-semibold">{fallback.title}</h3>
-        <div className="overflow-hidden rounded-xl border border-border bg-background">
+        {fallback.embed_url && <div className="overflow-hidden rounded-xl border border-border bg-background">
           <iframe src={fallback.embed_url} title={fallback.title} loading="lazy" referrerPolicy="strict-origin-when-cross-origin" allow="fullscreen" className="aspect-video w-full" />
-        </div>
-        <div className="flex flex-wrap gap-2"><a href={fallback.public_view_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-gold/30 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gold">Open generator <ArrowRight size={13} /></a><a href={fallback.supporting_guide_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-border px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-muted-foreground">Open {fallback.supporting_guide_title}</a></div>
+        </div>}
+        <div className="flex flex-wrap gap-2"><a href={fallback.public_view_url} target="_blank" rel="noopener noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-gold/30 px-4 py-3 text-[10px] font-bold uppercase tracking-widest text-gold">Open ResoFit flow <ArrowRight size={13} /></a></div>
         <p className="text-[10px] leading-4 text-muted-foreground">{fallback.limitation}</p>
       </article>)}
     </div>}
