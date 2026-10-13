@@ -31,13 +31,20 @@ function OnboardingPage() {
     let active = true;
     if (!session || !supabase) { setExperience(null); setClaimLoading(false); return () => { active = false; }; }
     setClaimLoading(true); setClaimError("");
-    void supabase.functions.invoke("claim-dashboard-entitlement").then(({ data, error }) => {
+    void supabase.functions.invoke("claim-dashboard-entitlement").then(async ({ data, error }) => {
       if (!active) return;
       if (error) { setExperience(null); setClaimError(error.message); return; }
       const verified = data?.plan_entitled ? (data?.plan_experience ?? data?.experience) as VerifiedExperience | null : null;
       if (verified?.product_sku && verified?.entitlement_id) {
         setExperience(verified); setClaimError("");
         try { window.sessionStorage.setItem("resofit_verified_experience", JSON.stringify(verified)); } catch { /* Verified data is also held in React state. */ }
+        const { data: existingPlan, error: planLookupError } = await supabase.functions.invoke("resofit-personal-plan", { body: { action: "get", product_sku: verified.product_sku } });
+        if (!active) return;
+        if (!planLookupError && existingPlan?.ok && existingPlan?.plan_id && existingPlan?.plan) {
+          setServerPlan(existingPlan as ServerPlanResult);
+          if (existingPlan.intake) setIntakeLocal((value) => ({ ...value, ...existingPlan.intake }));
+          setStep(steps.length - 1);
+        }
       } else {
         setExperience(null);
         setClaimError(data?.entitled ? "Your purchase grants dashboard access, but it has no active personalized-plan entitlement." : "No successful ResoFit purchase is linked to this email yet. Use the same email used at checkout.");
