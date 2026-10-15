@@ -168,6 +168,38 @@ function V12EnginePage() {
           <Metric icon={Database} label="Learning events" value={data ? data.operating_evidence.learning_events.toLocaleString("en-NG") : "—"} sub="Canonical ChatB2K learning store" good />
         </section>
 
+        <section className="mt-5">
+          <Panel title="External commerce intelligence" icon={Cable}>
+            {(() => {
+              const commerce = data?.engines.find((e) => e.engine_key === "external_commerce_intelligence");
+              const evidence = (commerce?.evidence ?? {}) as any;
+              const counts = evidence.live_counts ?? {};
+              const readiness = evidence.readiness ?? {};
+              const gates = Array.isArray(evidence.manual_gates) ? evidence.manual_gates : [];
+              return <>
+                <div className="flex flex-wrap items-center justify-between gap-3">
+                  <div><div className="text-sm font-semibold text-white">ResoFlex Edge Node · commerce-source-of-truth</div><div className="mt-1 text-xs text-white/45">resoflex-commerce-intelligence · v{evidence.target_function_version ?? "—"}</div></div>
+                  <Badge good={commerce?.status === "ACTIVE"} warn={commerce?.status !== "ACTIVE"}>{commerce?.status ?? "NO REGISTRY ROW"}</Badge>
+                </div>
+                <div className="mt-3 grid grid-cols-2 gap-2 sm:grid-cols-3">
+                  <Kpi label="Commerce records" value={String(counts.products ?? "—")} /><Kpi label="Observations" value={String(counts.observations ?? "—")} /><Kpi label="Media refs" value={String(counts.media_assets ?? "—")} /><Kpi label="Competitor comparisons" value={String(counts.competitor_comparisons ?? "—")} /><Kpi label="Ingestion runs" value={String(counts.ingestion_runs ?? "—")} /><Kpi label="Publish eligible" value={String(readiness.publish_eligible ?? "—")} />
+                </div>
+                <div className="mt-4 rounded-xl border border-amber-300/20 bg-amber-300/[0.04] p-3">
+                  <div className="text-xs font-semibold uppercase tracking-wider text-amber-200">Manual gates · do not bypass</div>
+                  <div className="mt-2 space-y-2">{gates.map((gate: any) => <div key={gate.key} className="flex flex-wrap items-start justify-between gap-2 border-b border-white/5 pb-2 last:border-0 last:pb-0"><div className="min-w-0"><div className="break-words text-xs text-white/80">{String(gate.key).replaceAll("_", " ")}</div><div className="text-[10px] text-white/35">{gate.owner ?? "Unassigned"}</div></div><Badge good={["PASS", "VERIFIED", "DONE"].includes(String(gate.status).toUpperCase())} warn={!["PASS", "VERIFIED", "DONE"].includes(String(gate.status).toUpperCase())}>{String(gate.status ?? "UNKNOWN")}</Badge></div>)}
+                  {!gates.length && <div className="text-xs text-white/40">No gate evidence returned. Refresh the V12 snapshot.</div>}</div>
+                </div>
+                <div className="mt-3 flex flex-wrap gap-2">
+                  <button onClick={() => void load()} className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/5"><RefreshCw className="h-3.5 w-3.5" /> Refresh status</button>
+                  <a href={String(evidence.cutover_pr ?? "https://github.com/EliteFitness101/chatb2k-f9d8a04d/pull/45")} target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/5">Producer cutover PR <ExternalLink className="h-3.5 w-3.5" /></a>
+                  <a href="https://supabase.com/dashboard/project/vbqjvmnhdtdhmeeudqnn" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-white/15 px-3 py-2 text-xs font-semibold text-white/80 hover:bg-white/5">Edit main registry <ExternalLink className="h-3.5 w-3.5" /></a>
+                </div>
+                <p className="mt-3 text-[11px] leading-relaxed text-white/40">Publishing remains blocked until source authorization, live product facts and stock, media rights, delivery/returns, 500×500 image QA and authenticated ingestion tests are evidenced. This panel is read-only; edit the canonical registry in Supabase.</p>
+              </>;
+            })()}
+          </Panel>
+        </section>
+
         <section className="mt-5 grid gap-5 xl:grid-cols-[1.2fr_1fr]">
           <Panel title="LordB2K state machine · registered engines" icon={Workflow}>
             <div className="mb-4 grid gap-2 sm:grid-cols-3">
