@@ -25,6 +25,8 @@ type Snapshot = {
   social: { total_destinations: number; active_destinations: number; verified_destinations: number; by_platform: { platform: string; total: number; active: number; verified: number }[]; destinations: Destination[]; last_sync: { created_at: string; payload: Record<string, unknown> } | null; query_ok: boolean };
   portfolio: { source_observations_24h: number; generated_drafts: number; reviewed_drafts: number; latest_draft: { id: string; source: string; event_type: string; topic: string; created_at: string; linkedin_headline?: string | null; source_urls?: string[] } | null; recent_events: { id: string; source: string; event_type: string; topic: string; created_at: string }[]; query_ok: boolean };
   endpoints: { name: string; slug: string; path: string; method: string; purpose?: string }[];
+  provider_routes?: { route_id:string; provider:string; service_type:string; status:string; owner_node_id:string|null; endpoint_class:string|null; fallback_provider:string|null; config:Record<string,unknown>; visibility:string|null; updated_at:string|null }[];
+  publishing_settings?: { paused:boolean; scheduler_enabled:boolean; organization_id:string|null; updated_at:string|null } | null;
   qa?: { latest_checks: { service_name: string; status: string; latency_ms: number | null; version: string | null; metadata: Record<string, unknown>; checked_at: string }[]; query_ok: boolean };
 };
 
@@ -35,7 +37,7 @@ function V12EnginePage() {
   const { session, loading: authLoading, isAdmin, isSuperAdmin, twoFactorVerified } = useAuth();
   const [data, setData] = useState<Snapshot | null>(null);
   const [loading, setLoading] = useState(true);
-  const [busy, setBusy] = useState<"sync" | "portfolio" | "qa" | "assessment" | null>(null);
+  const [busy, setBusy] = useState<"sync" | "portfolio" | "qa" | "assessment" | "provider-route" | "scheduler" | "pause" | null>(null);
   const [assessmentResult, setAssessmentResult] = useState<any>(null);
   const [qaResult, setQaResult] = useState<any>(null);
   const [error, setError] = useState("");
@@ -91,6 +93,22 @@ function V12EnginePage() {
           : "Channel sync returned: " + (result?.registry_rows_synced ?? "—") + " registry rows synced; " + (result?.errors?.length ?? 0) + " errors.");
       }
     } catch (e) { setError(e instanceof Error ? e.message : "The requested operation failed."); }
+    finally { setBusy(null); await load(); }
+  };
+
+  const runControlAction = async (body: Record<string, unknown>) => {
+    if (!supabase) { setError("Supabase is not configured in this deployment."); return; }
+    const action = String(body.action || "");
+    const busyKey = action === "set_provider_route" ? "provider-route" : action === "set_publishing_settings" && typeof body.paused === "boolean" ? "pause" : "scheduler";
+    setBusy(busyKey);
+    setActionMessage("");
+    setError("");
+    try {
+      const { data: result, error: fnError } = await supabase.functions.invoke("v12-engine-dashboard", { body });
+      if (fnError) setError(fnError.message);
+      else if (result?.ok !== true) setError(String(result?.error || "Control-plane update failed."));
+      else setActionMessage("Control-plane setting persisted and applies on the next publisher request.");
+    } catch (e) { setError(e instanceof Error ? e.message : "Control-plane update failed."); }
     finally { setBusy(null); await load(); }
   };
 
@@ -414,6 +432,24 @@ function V12EnginePage() {
               <Metric icon={CheckCircle2} label="Active + verified" value={String(data?.social.verified_destinations ?? "—")} sub="Active and timestamp-verified" good={Boolean(data?.social.verified_destinations)} />
               <Metric icon={Activity} label="Active but unverified" value={String(Math.max(0, (data?.social.active_destinations ?? 0) - (data?.social.verified_destinations ?? 0)))} sub="Requires fresh verification" warn={Boolean(data && data.social.active_destinations > data.social.verified_destinations)} />
             </section>
+            <Panel title="ChatB2K publisher routes & live switches" icon={Workflow}>
+              <p className="mb-3 text-xs leading-5 text-white/45">These settings are persisted in the ChatB2K control plane. Activating a provider route does not bypass per-host allowlists, rights/originality review, asset QA, channel verification, rate limits or queue approval.</p>
+              <div className="mb-4 flex flex-wrap gap-2">
+                <button onClick={() => void runControlAction({action:"set_publishing_settings",paused:!Boolean(data?.publishing_settings?.paused)})} disabled={busy !== null} className="rounded-lg border border-white/10 px-3 py-2 text-xs disabled:opacity-50">{data?.publishing_settings?.paused ? "Resume publishing automation" : "Pause publishing automation"}</button>
+                <button onClick={() => void runControlAction({action:"set_publishing_settings",scheduler_enabled:!Boolean(data?.publishing_settings?.scheduler_enabled)})} disabled={busy !== null} className="rounded-lg border border-white/10 px-3 py-2 text-xs disabled:opacity-50">{data?.publishing_settings?.scheduler_enabled ? "Disable scheduler" : "Enable scheduler"}</button>
+              </div>
+              <div className="space-y-2">
+                {(data?.provider_routes ?? []).filter(route => route.service_type === "social_distribution").map(route => {
+                  const enabled = route.status === "active" && route.config?.enabled === true && route.config?.approved === true;
+                  return <div key={route.route_id} className="flex flex-col gap-3 rounded-xl border border-white/10 p-3 sm:flex-row sm:items-center sm:justify-between">
+                    <div className="min-w-0"><div className="text-sm font-semibold">{route.provider} · {route.route_id}</div><div className="mt-1 text-xs text-white/45">Service: {route.service_type} · owner: {route.owner_node_id || "unassigned"} · updated {when(route.updated_at)}</div><div className="mt-1 text-[10px] text-white/35">Provider route status: {route.status} · endpoint class: {route.endpoint_class || "not set"}</div></div>
+                    <div className="flex items-center gap-2"><Badge good={enabled} warn={!enabled}>{enabled ? "APPROVED + ENABLED" : "DISABLED / NOT APPROVED"}</Badge><button onClick={() => { if (!enabled && !window.confirm("Enable this provider route? Per-host rights, originality, asset QA, destination verification and queue approval gates remain mandatory.")) return; void runControlAction({action:"set_provider_route",route_id:route.route_id,enabled:!enabled}); }} disabled={busy !== null} className="rounded-lg border border-amber-300/20 bg-amber-300/10 px-3 py-2 text-xs text-amber-100 disabled:opacity-50">{busy === "provider-route" ? "Saving…" : enabled ? "Disable route" : "Enable route"}</button></div>
+                  </div>;
+                })}
+                {!data?.provider_routes?.some(route => route.service_type === "social_distribution") && <p className="text-sm text-white/45">No social distribution provider routes registered.</p>}
+              </div>
+              <p className="mt-3 text-[10px] text-white/35">Organization setting: {data?.publishing_settings?.organization_id || "not configured"} · scheduler {data?.publishing_settings?.scheduler_enabled ? "enabled" : "disabled"} · automation {data?.publishing_settings?.paused ? "paused" : "unpaused"}</p>
+            </Panel>
             <Panel title="Connected social destinations" icon={Globe2}>
               <div className="space-y-2">{(data?.social.destinations ?? []).map(d => <div key={d.provider + d.platform + d.external_channel_id} className="flex flex-col gap-2 rounded-xl border border-white/10 p-3 sm:flex-row sm:items-center sm:justify-between"><div className="min-w-0"><div className="text-sm font-semibold">{d.display_name}</div><div className="mt-1 break-all text-[10px] text-white/40">{d.platform} · {d.provider} · channel {d.external_channel_id}</div><div className="mt-1 text-[10px] text-white/35">Last verified {when(d.last_verified_at)} · daily limit {d.daily_limit} · queue {d.queue_paused ? "paused" : "not marked paused"}</div></div><div className="flex flex-wrap gap-2"><Badge good={d.active && Boolean(d.last_verified_at)} warn={d.active && !d.last_verified_at}>{d.active && d.last_verified_at ? "ACTIVE + VERIFIED" : d.active ? "ACTIVE / UNVERIFIED" : "INACTIVE"}</Badge>{d.queue_paused && <Badge warn>QUEUE PAUSED</Badge>}</div></div>)}{!data?.social.destinations.length && <p className="text-sm text-white/45">No destinations returned in this telemetry snapshot.</p>}</div>
               <div className="mt-4 flex flex-wrap gap-2"><button onClick={() => void runAction("sync")} disabled={busy !== null} className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/[0.05] disabled:opacity-50"><RefreshCw className={busy === "sync" ? "h-3 w-3 animate-spin" : "h-3 w-3"} />{busy === "sync" ? "Syncing…" : "Sync professional channels"}</button><a href="https://business.google.com/" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/[0.05]">Google Business Manager <ExternalLink className="h-3 w-3" /></a><a href="https://www.linkedin.com/in/mcjerry-michael-371772118" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/[0.05]">LinkedIn <ExternalLink className="h-3 w-3" /></a></div>
