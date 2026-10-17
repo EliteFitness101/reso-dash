@@ -1,0 +1,31 @@
+name: ResoDash PWA/profile-cache checks
+
+on:
+  pull_request:
+    paths:
+      - "src/lib/auth-context.tsx"
+      - "src/lib/profile-store.tsx"
+      - "src/routes/__root.tsx"
+      - "public/sw.js"
+      - "public/offline.html"
+      - ".github/workflows/pwa-profile-cache-check.yml"
+
+permissions:
+  contents: read
+
+jobs:
+  lint-build:
+    runs-on: ubuntu-latest
+    steps:
+      - name: Checkout
+        uses: actions/checkout@v4
+      - name: Setup Node
+        uses: actions/setup-node@v4
+        with:
+          node-version: 22
+      - name: Install dependencies
+        run: npm install --no-audit --no-fund
+      - name: Lint
+        run: npm run lint
+      - name: Build
+        run: npm run build
