@@ -58,7 +58,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
     try {
       localStorage.removeItem(KEY);
       localStorage.removeItem(CUR_KEY);
-    } catch {}
+    } catch { /* Storage may be disabled by browser policy. */ }
   }, []);
 
   useEffect(() => {
@@ -68,7 +68,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
       try {
         localStorage.removeItem(KEY);
         localStorage.removeItem(CUR_KEY);
-      } catch {}
+      } catch { /* Storage may be disabled by browser policy. */ }
     };
     window.addEventListener("resofit:clear-profile-store", clearOnIdentityChange);
     return () => window.removeEventListener("resofit:clear-profile-store", clearOnIdentityChange);
@@ -112,7 +112,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         try {
           localStorage.removeItem(KEY);
           localStorage.removeItem(CUR_KEY);
-        } catch {}
+        } catch { /* Storage may be disabled by browser policy. */ }
       },
     };
   }, [all, currentRsid]);
