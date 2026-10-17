@@ -63,15 +63,30 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
 
   useEffect(() => {
     try {
-      localStorage.setItem(KEY, JSON.stringify(all));
+      if (all.length > 0) localStorage.setItem(KEY, JSON.stringify(all));
+      else localStorage.removeItem(KEY);
     } catch {}
   }, [all]);
 
   useEffect(() => {
     try {
       if (currentRsid) localStorage.setItem(CUR_KEY, currentRsid);
+      else localStorage.removeItem(CUR_KEY);
     } catch {}
   }, [currentRsid]);
+
+  useEffect(() => {
+    const clearOnIdentityChange = () => {
+      setAll([]);
+      setCurrentRsid(null);
+      try {
+        localStorage.removeItem(KEY);
+        localStorage.removeItem(CUR_KEY);
+      } catch {}
+    };
+    window.addEventListener("resofit:clear-profile-store", clearOnIdentityChange);
+    return () => window.removeEventListener("resofit:clear-profile-store", clearOnIdentityChange);
+  }, []);
 
   const value = useMemo<ProfileStore>(() => {
     const current = all.find((p) => p.rsid === currentRsid) ?? null;
