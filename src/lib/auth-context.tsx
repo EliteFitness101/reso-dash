@@ -33,12 +33,18 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [session, setSession] = useState<Session | null>(null);
   const [loading, setLoading] = useState(true);
   const authorizationRun = useRef(0);
+  const previousUserId = useRef<string | null>(null);
   const [roles, setRoles] = useState<AuthRole[]>([]);
   const [twoFactorVerified, setTwoFactorVerified] = useState(false);
   const [adminMode, setAdminMode] = useState(false);
 
   const refreshAuthorization = async (nextSession: Session | null) => {
     const run = ++authorizationRun.current;
+    const nextUserId = nextSession?.user?.id ?? null;
+    if (previousUserId.current !== nextUserId) {
+      previousUserId.current = nextUserId;
+      if (typeof window !== "undefined") window.dispatchEvent(new Event("resofit:clear-profile-store"));
+    }
     setLoading(true);
     setSession(nextSession);
     setAdminMode(false);
