@@ -52,28 +52,14 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [all, setAll] = useState<SubscriberProfile[]>([]);
   const [currentRsid, setCurrentRsid] = useState<string | null>(null);
 
+  // Migrate away from the old persistent cache: it could contain personal and health/intake data.
+  // Profile records now remain in memory only until a server-backed, access-controlled store is wired in.
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) setAll(JSON.parse(raw));
-      const cur = localStorage.getItem(CUR_KEY);
-      if (cur) setCurrentRsid(cur);
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(CUR_KEY);
     } catch {}
   }, []);
-
-  useEffect(() => {
-    try {
-      if (all.length > 0) localStorage.setItem(KEY, JSON.stringify(all));
-      else localStorage.removeItem(KEY);
-    } catch {}
-  }, [all]);
-
-  useEffect(() => {
-    try {
-      if (currentRsid) localStorage.setItem(CUR_KEY, currentRsid);
-      else localStorage.removeItem(CUR_KEY);
-    } catch {}
-  }, [currentRsid]);
 
   useEffect(() => {
     const clearOnIdentityChange = () => {
