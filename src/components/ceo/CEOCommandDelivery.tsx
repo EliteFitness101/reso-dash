@@ -217,7 +217,7 @@ export function CEOCommandDelivery({ briefing }: Props) {
           <button type="button" onClick={speak} className="inline-flex items-center gap-2 rounded-xl bg-amber-300 px-4 py-2.5 text-xs font-bold uppercase tracking-wider text-black">
             {speaking ? <VolumeX size={15} /> : <Volume2 size={15} />}{speaking ? "Stop speaking" : "Speak briefing"}
           </button>
-          <button type="button" onClick={() => { void navigator.clipboard?.writeText(briefing).catch(() => undefined); }} className="rounded-xl border border-border px-4 py-2.5 text-xs font-semibold text-foreground">Copy script</button>
+          <button type="button" onClick={() => { if (navigator.clipboard) void navigator.clipboard.writeText(briefing).catch(() => undefined); }} className="rounded-xl border border-border px-4 py-2.5 text-xs font-semibold text-foreground">Copy script</button>
         </div>
       </div>
 
