@@ -6,8 +6,6 @@ self.addEventListener("push", (event) => {
   const title = data.title || "ResoFit CEO Command";
   const options = {
     body: data.body || "Your CEO briefing is ready.",
-    icon: "/icons/icon-192.png",
-    badge: "/icons/icon-192.png",
     tag: data.tag || "resofit-ceo-command",
     renotify: false,
     data: { url: data.url || "https://dashboard.resofit.fit/ceo-growth", receiptToken: data.receiptToken || null },
