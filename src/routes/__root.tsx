@@ -1,3 +1,4 @@
+import { useEffect } from "react";
 import { QueryClient, QueryClientProvider } from "@tanstack/react-query";
 import {
   Outlet,
@@ -121,6 +122,13 @@ import { ProfileProvider } from "@/lib/profile-store";
 
 function RootComponent() {
   const { queryClient } = Route.useRouteContext();
+
+  useEffect(() => {
+    if (!("serviceWorker" in navigator)) return;
+    void navigator.serviceWorker.register("/sw.js", { scope: "/" }).catch((error: unknown) => {
+      console.warn("ResoFlex offline support could not be registered.", error);
+    });
+  }, []);
 
   return (
     <QueryClientProvider client={queryClient}>
