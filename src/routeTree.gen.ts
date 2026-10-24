@@ -11,6 +11,9 @@
 import { Route as rootRouteImport } from './routes/__root'
 import { Route as ShellRouteImport } from './routes/_shell'
 import { Route as IndexRouteImport } from './routes/index'
+import { Route as CeoGrowthRouteImport } from './routes/ceo-growth'
+import { Route as V12EngineRouteImport } from './routes/v12-engine'
+import { Route as BigoOpsRouteImport } from './routes/bigo-ops'
 import { Route as ShellUpsellsRouteImport } from './routes/_shell.upsells'
 import { Route as ShellTrainingRouteImport } from './routes/_shell.training'
 import { Route as ShellOnboardingRouteImport } from './routes/_shell.onboarding'
@@ -25,6 +28,21 @@ const ShellRoute = ShellRouteImport.update({
 const IndexRoute = IndexRouteImport.update({
   id: '/',
   path: '/',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const CeoGrowthRoute = CeoGrowthRouteImport.update({
+  id: '/ceo-growth',
+  path: '/ceo-growth',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const V12EngineRoute = V12EngineRouteImport.update({
+  id: '/v12-engine',
+  path: '/v12-engine',
+  getParentRoute: () => rootRouteImport,
+} as any)
+const BigoOpsRoute = BigoOpsRouteImport.update({
+  id: '/bigo-ops',
+  path: '/bigo-ops',
   getParentRoute: () => rootRouteImport,
 } as any)
 const ShellUpsellsRoute = ShellUpsellsRouteImport.update({
@@ -60,6 +78,9 @@ const ShellCheckinRoute = ShellCheckinRouteImport.update({
 
 export interface FileRoutesByFullPath {
   '/': typeof IndexRoute
+  '/ceo-growth': typeof CeoGrowthRoute
+  '/v12-engine': typeof V12EngineRoute
+  '/bigo-ops': typeof BigoOpsRoute
   '/checkin': typeof ShellCheckinRoute
   '/checkout': typeof ShellCheckoutRoute
   '/macros': typeof ShellMacrosRoute
@@ -69,6 +90,9 @@ export interface FileRoutesByFullPath {
 }
 export interface FileRoutesByTo {
   '/': typeof IndexRoute
+  '/ceo-growth': typeof CeoGrowthRoute
+  '/v12-engine': typeof V12EngineRoute
+  '/bigo-ops': typeof BigoOpsRoute
   '/checkin': typeof ShellCheckinRoute
   '/checkout': typeof ShellCheckoutRoute
   '/macros': typeof ShellMacrosRoute
@@ -79,6 +103,9 @@ export interface FileRoutesByTo {
 export interface FileRoutesById {
   __root__: typeof rootRouteImport
   '/': typeof IndexRoute
+  '/ceo-growth': typeof CeoGrowthRoute
+  '/v12-engine': typeof V12EngineRoute
+  '/bigo-ops': typeof BigoOpsRoute
   '/_shell': typeof ShellRouteWithChildren
   '/_shell/checkin': typeof ShellCheckinRoute
   '/_shell/checkout': typeof ShellCheckoutRoute
@@ -91,6 +118,9 @@ export interface FileRouteTypes {
   fileRoutesByFullPath: FileRoutesByFullPath
   fullPaths:
     | '/'
+    | '/ceo-growth'
+    | '/v12-engine'
+    | '/bigo-ops'
     | '/checkin'
     | '/checkout'
     | '/macros'
@@ -100,6 +130,9 @@ export interface FileRouteTypes {
   fileRoutesByTo: FileRoutesByTo
   to:
     | '/'
+    | '/ceo-growth'
+    | '/v12-engine'
+    | '/bigo-ops'
     | '/checkin'
     | '/checkout'
     | '/macros'
@@ -109,6 +142,9 @@ export interface FileRouteTypes {
   id:
     | '__root__'
     | '/'
+    | '/ceo-growth'
+    | '/v12-engine'
+    | '/bigo-ops'
     | '/_shell'
     | '/_shell/checkin'
     | '/_shell/checkout'
@@ -120,6 +156,9 @@ export interface FileRouteTypes {
 }
 export interface RootRouteChildren {
   IndexRoute: typeof IndexRoute
+  CeoGrowthRoute: typeof CeoGrowthRoute
+  V12EngineRoute: typeof V12EngineRoute
+  BigoOpsRoute: typeof BigoOpsRoute
   ShellRoute: typeof ShellRouteWithChildren
 }
 
@@ -137,6 +176,27 @@ declare module '@tanstack/react-router' {
       path: '/'
       fullPath: '/'
       preLoaderRoute: typeof IndexRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/ceo-growth': {
+      id: '/ceo-growth'
+      path: '/ceo-growth'
+      fullPath: '/ceo-growth'
+      preLoaderRoute: typeof CeoGrowthRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/v12-engine': {
+      id: '/v12-engine'
+      path: '/v12-engine'
+      fullPath: '/v12-engine'
+      preLoaderRoute: typeof V12EngineRouteImport
+      parentRoute: typeof rootRouteImport
+    }
+    '/bigo-ops': {
+      id: '/bigo-ops'
+      path: '/bigo-ops'
+      fullPath: '/bigo-ops'
+      preLoaderRoute: typeof BigoOpsRouteImport
       parentRoute: typeof rootRouteImport
     }
     '/_shell/upsells': {
@@ -206,6 +266,9 @@ const ShellRouteWithChildren = ShellRoute._addFileChildren(ShellRouteChildren)
 
 const rootRouteChildren: RootRouteChildren = {
   IndexRoute: IndexRoute,
+  CeoGrowthRoute: CeoGrowthRoute,
+  V12EngineRoute: V12EngineRoute,
+  BigoOpsRoute: BigoOpsRoute,
   ShellRoute: ShellRouteWithChildren,
 }
 export const routeTree = rootRouteImport
