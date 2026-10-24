@@ -18,7 +18,8 @@ const slug = (s:string) => s.toLowerCase().replace(/[^a-z0-9]+/g,"-").replace(/^
 const unique = (a:string[]) => [...new Set(a)];
 function ExternalSourcesPage() {
   const auth = useAuth();
-  const [rows,setRows] = useState<Row[]>([]);\n  const [discoveryQueue,setDiscoveryQueue] = useState<Row[]>([]);
+  const [rows,setRows] = useState<Row[]>([]);
+  const [discoveryQueue,setDiscoveryQueue] = useState<Row[]>([]);
   const [hits,setHits] = useState<Hit[]>([]);
   const [q,setQ] = useState("");
   const [filter,setFilter] = useState("all");
