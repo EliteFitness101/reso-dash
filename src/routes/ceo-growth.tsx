@@ -152,6 +152,7 @@ function CEODashboard() {
             <div className="flex items-center gap-2">
               <span className={"rounded-full border px-3 py-1.5 text-[10px] font-bold uppercase tracking-widest " + (health.tone === "green" ? "border-emerald-500/30 bg-emerald-500/10 text-emerald-300" : health.tone === "red" ? "border-red-500/30 bg-red-500/10 text-red-300" : "border-gold/30 bg-gold/10 text-gold")}><span className="mr-1.5 inline-block h-1.5 w-1.5 rounded-full bg-current" />{health.label}</span>
               <button type="button" onClick={() => void load()} disabled={refreshing} className="rounded-xl border border-border bg-card/60 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-muted-foreground hover:text-gold disabled:opacity-50"><RefreshCw size={13} className={refreshing ? "mr-1.5 inline animate-spin" : "mr-1.5 inline"} />Refresh</button>
+              <a href="/bigo-ops" className="rounded-xl border border-gold/30 bg-gold/5 px-3 py-2 text-[10px] font-bold uppercase tracking-wider text-gold hover:bg-gold/10">BIGO Control Room</a>
             </div>
           </div>
         </header>
