@@ -2,6 +2,7 @@ import { createFileRoute } from "@tanstack/react-router";
 import { Activity, AlertTriangle, ArrowUpRight, Bot, CheckCircle2, CircleDollarSign, Film, GitBranch, Megaphone, RefreshCw, ShieldCheck, Users, UserPlus, WalletCards, Zap } from "lucide-react";
 import { useCallback, useEffect, useMemo, useState } from "react";
 import { AccessGate } from "@/components/AccessGate";
+import { CEOAccessMFA } from "@/components/CEOAccessMFA";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase-browser";
 
@@ -127,17 +128,19 @@ function CEODashboard() {
     return { label: "OPERATING", tone: "green" as const };
   }, [snapshot]);
 
-  if (!isSuperAdmin || !twoFactorVerified) {
+  if (!isSuperAdmin) {
     return (
       <div className="min-h-dvh bg-background px-4 py-8 text-foreground">
         <div className="mx-auto max-w-xl glass-card-gold rounded-3xl p-6">
           <p className="text-[10px] uppercase tracking-[0.3em] text-gold">CEO Growth Autopilot</p>
           <h1 className="mt-2 font-display text-2xl font-semibold">Privileged control surface</h1>
-          <p className="mt-2 text-sm leading-6 text-muted-foreground">This dashboard requires the CEO control role and verified MFA. No operational controls are exposed until both conditions are satisfied.</p>
+          <p className="mt-2 text-sm leading-6 text-muted-foreground">This dashboard is restricted to the verified ResoFit super-admin role. No operational controls are exposed to other accounts.</p>
         </div>
       </div>
     );
   }
+
+  if (!twoFactorVerified) return <CEOAccessMFA />;
 
   return (
     <div className="min-h-dvh bg-background text-foreground">
