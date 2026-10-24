@@ -1,13 +1,24 @@
 import "jsr:@supabase/functions-js/edge-runtime.d.ts";
 import { createClient } from "https://esm.sh/@supabase/supabase-js@2";
 
+const CORS_HEADERS = {
+  "Access-Control-Allow-Origin": "https://dashboard.resofit.fit",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
+  "Access-Control-Allow-Methods": "POST, OPTIONS",
+  "Vary": "Origin",
+};
+
 const json = (data: unknown, status = 200) =>
   new Response(JSON.stringify(data), {
     status,
-    headers: { "Content-Type": "application/json", "Cache-Control": "no-store" },
+    headers: { ...CORS_HEADERS, "Content-Type": "application/json", "Cache-Control": "no-store" },
   });
 
 Deno.serve(async (req) => {
+  // Browser preflight must succeed before the authenticated POST is sent.
+  if (req.method === "OPTIONS") {
+    return new Response(null, { status: 204, headers: CORS_HEADERS });
+  }
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
   const auth = req.headers.get("Authorization") ?? "";
   if (!auth.startsWith("Bearer ")) return json({ error: "Unauthorized" }, 401);
@@ -24,7 +35,7 @@ Deno.serve(async (req) => {
 
   const { data: payments, error } = await admin
     .from("payments")
-    .select("id,rsid,paystack_ref,status,customer_email,plan_type,product_sku,funnel_origin,paid_at,reconciled")
+    .select("id,user_id,rsid,paystack_ref,status,customer_email,plan_type,product_sku,funnel_origin,paid_at,reconciled")
     .eq("customer_email", email)
     .eq("status", "success")
     .eq("reconciled", true)
@@ -36,6 +47,20 @@ Deno.serve(async (req) => {
   const experiences: Record<string, unknown>[] = [];
 
   for (const payment of payments ?? []) {
+    // Never transfer a verified payment already linked to a different authenticated account.
+    if (payment.user_id && payment.user_id !== user.id) continue;
+    // Guest checkout can be claimed only by the authenticated account with the same email.
+    // This user_id update fires the canonical payment->entitlement trigger for configured SKUs.
+    if (!payment.user_id) {
+      const { error: linkError } = await admin
+        .from("payments")
+        .update({ user_id: user.id })
+        .eq("id", payment.id)
+        .is("user_id", null)
+        .eq("status", "success")
+        .eq("reconciled", true);
+      if (linkError) return json({ error: "Unable to associate verified purchase with this account" }, 500);
+    }
     const { error: entitlementError } = await admin
       .from("resofit_dashboard_entitlements")
       .upsert(
@@ -87,7 +112,20 @@ Deno.serve(async (req) => {
 
   if (stateError) return json({ error: "Unable to verify entitlement state" }, 500);
 
+  const stateSkus = [...new Set((states ?? []).map((state) => state.source_product).filter((sku): sku is string => Boolean(sku)))];
+  const { data: planConfigs, error: planConfigError } = stateSkus.length
+    ? await admin.from("resofit_entitlement_product_config").select("product_sku,feature_policy").in("product_sku", stateSkus)
+    : { data: [], error: null };
+  if (planConfigError) return json({ error: "Unable to verify product plan features" }, 500);
+  const planConfigBySku = new Map((planConfigs ?? []).map((config) => [config.product_sku, config.feature_policy]));
+  const hasPersonalPlan = (sku: string) => {
+    const policy = planConfigBySku.get(sku) as Record<string, unknown> | undefined;
+    return Boolean((policy?.meal_plan === true || policy?.personalized_meal === true) &&
+      (policy?.workout_plan === true || policy?.personalized_workout === true));
+  };
+
   for (const state of states ?? []) {
+    const planEligible = hasPersonalPlan(state.source_product);
     const syntheticReference = `ENTITLEMENT-${state.id}`;
     const { error: provisionError } = await admin
       .from("resofit_dashboard_entitlements")
@@ -123,17 +161,21 @@ Deno.serve(async (req) => {
       entitlement_status: state.status,
       entitlement_access: state.access,
       entitlement_id: state.id,
+      plan_eligible: planEligible,
       end_at: state.end_at,
       grace_end_at: state.grace_end_at,
       commerce_action_url: state.commerce_action_url,
     });
   }
 
+  const planExperience = experiences.find((item) => Boolean(item.entitlement_id) && item.plan_eligible === true) ?? null;
   return json({
     ok: true,
     entitled: experiences.length > 0,
+    plan_entitled: Boolean(planExperience),
     count: experiences.length,
-    experience: experiences[0] ?? null,
+    experience: planExperience ?? experiences[0] ?? null,
+    plan_experience: planExperience,
     experiences,
   });
 });
