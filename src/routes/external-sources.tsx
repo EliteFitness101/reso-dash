@@ -67,11 +67,11 @@ function ExternalSourcesPage() {
       const em=unique(md.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\.[A-Z]{2,}/gi)||[]).slice(0,10);
       const ph=unique(md.match(/(?:\+?\d[\d ().-]{7,}\d)/g)||[]).filter(x=>x.replace(/\D/g,"").length>=9&&x.replace(/\D/g,"").length<=15).slice(0,10);
       const social:Record<string,string>={};const re=/https?:\/\/(?:www\.)?(?:instagram\.com|facebook\.com|linkedin\.com|tiktok\.com|youtube\.com|x\.com|twitter\.com|wa\.me)\/[A-Za-z0-9_./?=&%-]+/gi;
-      for(const u of md.match(re)||[]){const h=new URL(u).hostname.replace(/^www\./,"");const k=h.split(".")[0];if(!social[k])social[k]=u;}
+      for(const u of md.match(re)||[]){const h=new URL(u).hostname.replace(/^www\./,"");const k=h==="wa.me"?"whatsapp":h.split(".")[0];if(!social[k])social[k]=u;}
       const postcode=md.match(/\b\d{6}\b/)?.[0]||null;
       const maps=(md.match(/https?:\/\/[^\s)\]>"]+/g)||[]).find(x=>/google\.[^/]+\/maps|maps\.app\.goo\.gl/i.test(x))||null;
       const patch:any={social_links:{...(row.social_links||{}),...social},source_evidence:{...(row.source_evidence||{}),scraped_url:row.website_url||row.source_url,scraped_at:new Date().toISOString(),firecrawl_event_id:r.data?.event?.id||null,extracted_emails:em,extracted_phone_candidates:ph,extracted_postcode:postcode,markdown_excerpt:md.slice(0,5000)},last_checked_at:new Date().toISOString(),updated_at:new Date().toISOString()};
-      if(!row.email&&em.length)patch.email=em[0];if(!row.phone&&ph.length)patch.phone=ph[0];if(!row.postcode&&postcode)patch.postcode=postcode;if(!row.google_business_url&&maps)patch.google_business_url=maps;
+      if(!row.email&&em.length)patch.email=em[0];if(!row.phone&&ph.length)patch.phone=ph[0];if(!row.whatsapp&&social.whatsapp)patch.whatsapp=social.whatsapp;if(!row.postcode&&postcode)patch.postcode=postcode;if(!row.google_business_url&&maps)patch.google_business_url=maps;
       if(row.verification_status==="discovered")patch.verification_status="public_source_checked";
       patch.ingest_status=(em.length||ph.length||Object.keys(social).length)?"needs_review":row.ingest_status;
       const u=await supabase.from("resofit_external_business_sources" as any).update(patch).eq("id",row.id);if(u.error)throw u.error;
