@@ -6,7 +6,7 @@ const SERVICE_ROLE = Deno.env.get("SUPABASE_SERVICE_ROLE_KEY") ?? "";
 
 const cors = {
   "Access-Control-Allow-Origin": "https://dashboard.resofit.fit",
-  "Access-Control-Allow-Headers": "authorization, apikey, content-type",
+  "Access-Control-Allow-Headers": "authorization, x-client-info, apikey, content-type",
   "Access-Control-Allow-Methods": "POST, OPTIONS",
   "Cache-Control": "no-store",
 };
@@ -136,6 +136,61 @@ function buildPlan(intake: Intake, durationDays: number, accessories: unknown[])
   };
 }
 
+
+type GeneratorFallback = {
+  title: string;
+  public_view_url: string;
+  embed_url: string | null;
+  access_policy: "only_returned_after_authenticated_active_entitlement";
+  limitation: string;
+};
+
+const RESOFIT_SUPPLIER_FLOWS: GeneratorFallback[] = [
+  {
+    title: "ResoFit Supplier Flow 1",
+    public_view_url: "https://canva.link/wa0xibny38mghke",
+    embed_url: null,
+    access_policy: "only_returned_after_authenticated_active_entitlement",
+    limitation: "Supplier-hosted public flow. Use through ResoFit; do not enter sensitive information unless the supplier flow explicitly requires it.",
+  },
+  {
+    title: "ResoFit Supplier Flow 2",
+    public_view_url: "https://canva.link/sn4fa2op54e8vn2",
+    embed_url: null,
+    access_policy: "only_returned_after_authenticated_active_entitlement",
+    limitation: "Supplier-hosted public flow. Use through ResoFit; do not enter sensitive information unless the supplier flow explicitly requires it.",
+  },
+  {
+    title: "ResoFit Supplier Flow 3",
+    public_view_url: "https://canva.link/rgxpgigtrygy6up",
+    embed_url: null,
+    access_policy: "only_returned_after_authenticated_active_entitlement",
+    limitation: "Supplier-hosted public flow. Use through ResoFit; do not enter sensitive information unless the supplier flow explicitly requires it.",
+  },
+  {
+    title: "ResoFit Personalized Meal Plans",
+    public_view_url: "https://www.canva.com/design/DAGgQLXq6gw/9v5z0lpP0rSfXeL3zNg_VQ/view?utm_content=DAGgQLXq6gw&utm_campaign=designshare&utm_medium=embeds&utm_source=link",
+    embed_url: "https://www.canva.com/design/DAGgQLXq6gw/9v5z0lpP0rSfXeL3zNg_VQ/view?embed",
+    access_policy: "only_returned_after_authenticated_active_entitlement",
+    limitation: "Supplier-hosted public view; this link cannot enforce buyer-specific expiry or watermarking.",
+  },
+];
+
+function buildGeneratorFallbacks(
+  _sku: string,
+  productType: string | null | undefined,
+  fulfillmentMode: string | null | undefined,
+): GeneratorFallback[] {
+  const normalizedType = (productType ?? "").toLowerCase();
+  const mode = (fulfillmentMode ?? "").toLowerCase();
+  const eligibleMode = /(digital|hybrid|service|subscription|booking|bundle)/.test(mode);
+  const eligibleType = /(digital|meal|nutrition|diet|food|workout|fitness|training|strength|wellness|plan|guide|assessment)/.test(normalizedType);
+  // Explicit non-digital fulfillment is never eligible. If fulfillment mode is absent,
+  // require a recognized digital/wellness product type instead of guessing.
+  if ((mode && !eligibleMode) || (!mode && !eligibleType)) return [];
+  return RESOFIT_SUPPLIER_FLOWS;
+}
+
 Deno.serve(async (req) => {
   if (req.method === "OPTIONS") return new Response("ok", { headers: cors });
   if (req.method !== "POST") return json({ error: "Method not allowed" }, 405);
@@ -179,6 +234,27 @@ Deno.serve(async (req) => {
   }
 
   const sourceProduct = entitlement.source_product;
+  const { data: entitlementProductConfig, error: entitlementProductConfigError } = await admin
+    .from("resofit_entitlement_product_config")
+    .select("feature_policy")
+    .eq("product_sku", sourceProduct)
+    .maybeSingle();
+  if (entitlementProductConfigError) return json({ error: "Unable to verify product plan features" }, 500);
+  const featurePolicy = (entitlementProductConfig?.feature_policy ?? {}) as Record<string, unknown>;
+  const canGenerateMealPlan = featurePolicy.meal_plan === true || featurePolicy.personalized_meal === true;
+  const canGenerateWorkoutPlan = featurePolicy.workout_plan === true || featurePolicy.personalized_workout === true;
+  if (!canGenerateMealPlan || !canGenerateWorkoutPlan) {
+    return json({ error: "This product entitlement does not include a personalized meal and workout plan.", code: "PLAN_NOT_INCLUDED" }, 403);
+  }
+  const { data: productMetadata } = await admin.from("products")
+    .select("product_type,fulfillment_mode")
+    .eq("sku", sourceProduct)
+    .maybeSingle();
+  const generator_fallbacks = buildGeneratorFallbacks(
+    sourceProduct,
+    productMetadata?.product_type,
+    productMetadata?.fulfillment_mode,
+  );
   const { data: experience } = await admin.from("resofit_product_experience_config")
     .select("product_sku,teaser,promise,delivery,plan,meal_workout,lifestyle_hacks,accessory_skus")
     .eq("product_sku", sourceProduct)
@@ -188,6 +264,30 @@ Deno.serve(async (req) => {
   const { data: accessories } = accessorySkus.length
     ? await admin.from("products").select("sku,handle,title,variant_price,image_src,published").in("sku", accessorySkus).eq("published", true)
     : { data: [] };
+
+  if (body?.action === "get") {
+    const { data: saved, error: readError } = await admin.from("resofit_personalized_plans")
+      .select("id,plan_version,intake,plan,generated_at,updated_at")
+      .eq("user_id", userData.user.id)
+      .eq("entitlement_key", entitlement.entitlement_key)
+      .eq("source_product", sourceProduct)
+      .maybeSingle();
+    if (readError) return json({ error: "Unable to retrieve saved personalized plan" }, 500);
+    return json({
+      ok: Boolean(saved),
+      saved: Boolean(saved),
+      code: saved ? undefined : "PLAN_NOT_FOUND",
+      entitlement: { status: entitlement.status, access: entitlement.access, source_product: sourceProduct, start_at: entitlement.start_at, end_at: entitlement.end_at, grace_end_at: entitlement.grace_end_at },
+      experience: { teaser: experience?.teaser ?? {}, promise: experience?.promise ?? {}, delivery: experience?.delivery ?? {}, plan: experience?.plan ?? {}, meal_workout: experience?.meal_workout ?? {}, lifestyle_hacks: experience?.lifestyle_hacks ?? {} },
+      plan: saved?.plan ?? null,
+      plan_id: saved?.id ?? null,
+      intake: saved?.intake ?? null,
+      generated_at: saved?.generated_at ?? null,
+      updated_at: saved?.updated_at ?? null,
+      accessories: accessories ?? [],
+      generator_fallbacks,
+    });
+  }
 
   const durationDays = Math.max(7, Number(experience?.plan?.duration_days ?? experience?.plan?.days ?? 30));
   const plan = buildPlan(intake, Math.min(durationDays, 30), accessories ?? []);
@@ -228,5 +328,6 @@ Deno.serve(async (req) => {
     plan_id: saved?.id,
     generated_at: saved?.generated_at,
     accessories: accessories ?? [],
+    generator_fallbacks,
   });
 });
