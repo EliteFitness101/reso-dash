@@ -34,6 +34,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   const [loading, setLoading] = useState(true);
   const authorizationRun = useRef(0);
   const [roles, setRoles] = useState<AuthRole[]>([]);
+  const [workspaceRole, setWorkspaceRole] = useState<string | null>(null);
   const [twoFactorVerified, setTwoFactorVerified] = useState(false);
   const [adminMode, setAdminMode] = useState(false);
 
@@ -45,27 +46,33 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
     if (!nextSession?.user || !supabase) {
       setRoles([]);
+      setWorkspaceRole(null);
       setTwoFactorVerified(false);
       setLoading(false);
       return;
     }
 
     try {
-      const { data, error } = await supabase.from("user_roles").select("role").eq("user_id", nextSession.user.id);
+      const [{ data: assignedRows, error: rolesError }, { data: workspaceRoleData, error: workspaceRoleError }] = await Promise.all([
+        supabase.from("user_roles").select("role").eq("user_id", nextSession.user.id),
+        supabase.rpc("get_my_workspace_role"),
+      ]);
       if (run !== authorizationRun.current) return;
-      if (error) {
-        setRoles([]);
-        setTwoFactorVerified(false);
-        return;
-      }
-      const assigned = (data ?? []).map((row) => row.role as AuthRole).filter((value): value is AuthRole => APP_ROLES.includes(value));
-      setRoles(assigned);
+      const assigned = (assignedRows ?? []).map((row) => row.role as AuthRole).filter((value): value is AuthRole => APP_ROLES.includes(value));
+      setRoles(rolesError ? [] : assigned);
+      setWorkspaceRole(!workspaceRoleError && typeof workspaceRoleData === "string" ? workspaceRoleData : null);
       try {
         const { data: aal, error: aalError } = await supabase.auth.mfa.getAuthenticatorAssuranceLevel();
         if (run !== authorizationRun.current) return;
         setTwoFactorVerified(!aalError && aal.currentLevel === "aal2");
       } catch {
         if (run === authorizationRun.current) setTwoFactorVerified(false);
+      }
+    } catch {
+      if (run === authorizationRun.current) {
+        setRoles([]);
+        setWorkspaceRole(null);
+        setTwoFactorVerified(false);
       }
     } finally {
       if (run === authorizationRun.current) setLoading(false);
@@ -108,7 +115,7 @@ export function AuthProvider({ children }: { children: ReactNode }) {
 
   const role = primaryRole(roles);
   const isAdmin = roles.includes("admin");
-  const isSuperAdmin = Boolean(userEmailIsCEO(session?.user));
+  const isSuperAdmin = workspaceRole === "super_admin";
 
   const toggleAdmin = () => {
     if (!isAdmin || !twoFactorVerified) return;
@@ -138,9 +145,6 @@ export function AuthProvider({ children }: { children: ReactNode }) {
   );
 }
 
-function userEmailIsCEO(user: User | null | undefined) {
-  return (user?.email ?? "").trim().toLowerCase() === "ceo@resofit.fit";
-}
 
 export function useAuth() {
   const value = useContext(Ctx);
