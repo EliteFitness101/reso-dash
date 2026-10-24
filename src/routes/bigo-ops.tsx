@@ -47,8 +47,8 @@ function BigoOpsPage() {
       const [h, l, j, q] = await Promise.all([
         supabase.from("bigo_sources" as any).select("bigo_id,source_url,display_name,active,capture_enabled,metadata").order("bigo_id").limit(2000),
         supabase.from("resofit_live_highlights" as any).select("id,host_id,host_name,title,status,original_url,imagekit_url,created_at,error_message,metadata").order("created_at", { ascending: false }).limit(100),
-        supabase.from("bigo_capture_jobs" as any).select("id,host_id,status,error_message,created_at,updated_at").order("created_at", { ascending: false }).limit(100),
-        supabase.from("content_queue" as any).select("id,title,status,platform,published_at,created_at,content_asset_id").order("created_at", { ascending: false }).limit(100),
+        supabase.from("bigo_capture_jobs" as any).select("id,status,error_message,created_at").order("created_at", { ascending: false }).limit(100),
+        supabase.from("content_queue" as any).select("id,title,status,platform,published_at,created_at").order("created_at", { ascending: false }).limit(100),
       ]);
       const bad = [h, l, j, q].find((r: any) => r.error);
       if (bad?.error) throw bad.error;
