@@ -21,14 +21,14 @@ Canonical database: Supabase project `resonance-fitness` (`vbqjvmnhdtdhmeeudqnn`
 - Scraped contacts require human review before outreach. Honor consent, lawful basis and opt-out rules.
 - Firecrawl API key remains server-side in Supabase secrets. Never place it in browser code.
 
-## Operational flow
+## Nationwide discovery coverage\n\nA durable queue in `public.resofit_external_discovery_queue` now contains 444 idempotent discovery tasks spanning all 36 Nigerian states plus the FCT and 12 categories: gyms/fitness, pools/recreation, wellness clinics, spas/massage, physiotherapy/rehabilitation, supplements/nutrition, healthy food, sports equipment, booking/hospitality, corporate wellness, pharmacy/health retail, and wellness technology. The queue is a coverage plan, not evidence that the searches have run. City/LGA-specific follow-up should be added as results and official geography sources are verified.\n\n## Operational flow
 1. Discover source URLs with the authenticated Firecrawl gateway.
 2. Review and import candidate sources.
-3. Scrape official pages and extract published contact metadata.
-4. Review contact evidence and deduplicate.
-5. Verify provider identity and services.
-6. Contact/onboard only through approved workflows.
-7. Re-check metadata and endpoints on a schedule.
+3. Scrape official pages and extract published contact metadata.\n4. Use the nationwide queue to schedule coverage by state and category; do not mark queued jobs complete until actual results are ingested.
+5. Review contact evidence and deduplicate.
+6. Verify provider identity and services.
+7. Contact/onboard only through approved workflows.
+8. Re-check metadata and endpoints on a schedule.
 
 ## Related endpoints
 - Firecrawl gateway: `https://vbqjvmnhdtdhmeeudqnn.supabase.co/functions/v1/firecrawl-intelligence-gateway`
