@@ -122,7 +122,7 @@ function V12EnginePage() {
   if (authLoading) return <main className="min-h-screen bg-[#07080a] p-6 text-white">Authenticating V12 console…</main>;
   if (!session) return <Gate title="V12 Engine Console" body="Sign in to access the production control plane." />;
   if (!isAdmin && !isSuperAdmin) return <Gate title="Restricted control plane" body="CEO/admin authorization is required." />;
-  if (isAdmin && !isSuperAdmin && !twoFactorVerified) return <Gate title="MFA required" body="Complete the required second factor before opening production telemetry." />;
+  if (!twoFactorVerified) return <Gate title="MFA required" body="Complete the required second factor before opening production telemetry." />;
 
   return (
     <main className="min-h-screen bg-[#07080a] text-white">
@@ -134,7 +134,7 @@ function V12EnginePage() {
             <p className="mt-1 max-w-3xl text-sm text-white/55">One control plane for orchestration, engine health, social distribution and professional portfolio intelligence.</p>
           </div>
           <div className="flex flex-wrap gap-2">
-            <a href="https://www.resofit.fit/coach-buchi" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/[0.06]">Public portfolio <ExternalLink className="h-4 w-4" /></a>
+            <a href="/external-sources" className="inline-flex items-center gap-2 rounded-xl border border-amber-300/25 px-4 py-2 text-sm text-amber-100 hover:bg-white/[0.06]">External sources <ExternalLink className="h-4 w-4" /></a>\n            <a href="https://www.resofit.fit/coach-buchi" target="_blank" rel="noreferrer" className="inline-flex items-center gap-2 rounded-xl border border-white/10 px-4 py-2 text-sm hover:bg-white/[0.06]">Public portfolio <ExternalLink className="h-4 w-4" /></a>
             <button onClick={() => void load()} disabled={loading} className="inline-flex items-center gap-2 rounded-xl border border-white/10 bg-white/[0.04] px-4 py-2 text-sm hover:bg-white/[0.08] disabled:opacity-50"><RefreshCw className={loading ? "h-4 w-4 animate-spin" : "h-4 w-4"} /> Refresh telemetry</button>
           </div>
         </header>
