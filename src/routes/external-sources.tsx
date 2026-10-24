@@ -78,26 +78,6 @@ function ExternalSourcesPage() {
       setNotice("Enriched "+row.business_name+": "+em.length+" email candidates, "+ph.length+" phone candidates, "+Object.keys(social).length+" social URLs. Review before outreach.");await load();
     }catch(e){setError(e instanceof Error?e.message:"Scrape/enrichment failed.");}finally{setBusy("");}
   };
-  const enrich = async (row:Row) => {
-    if(!supabase)return;setBusy("enrich");setError("");setNotice("");
-    try {
-      const r=await supabase.functions.invoke("firecrawl-intelligence-gateway",{body:{action:"scrape",source_url:row.website_url||row.source_url,formats:["markdown"],onlyMainContent:true,observation_type:"external_business_contact_enrichment"}});
-      if(r.error)throw r.error;if(r.data?.error)throw new Error(String(r.data.error));
-      const d=r.data?.result?.data??r.data?.result??{};const md=String(d.markdown||d.content||"");
-      const es=unique(md.match(/[A-Z0-9._%+-]+@[A-Z0-9.-]+\\.[A-Z]{2,}/gi)||[]);
-      const ps=unique(md.match(/(?:\\+?\\d[\\d ().-]{7,}\\d)/g)||[]).filter(x=>x.replace(/\\D/g,"").length>=9&&x.replace(/\\D/g,"").length<=15);
-      const sl:Record<string,string>={};const re=/https?:\\/\\/(?:www\\.)?(?:instagram\\.com|facebook\\.com|linkedin\\.com|tiktok\\.com|youtube\\.com|x\\.com|twitter\\.com|wa\\.me)\\/[A-Za-z0-9_./?=&%-]+/gi;
-      for(const u of md.match(re)||[]){const h=new URL(u).hostname.replace(/^www\\./,"");const k=h.split(".")[0];if(!sl[k])sl[k]=u;}
-      const postcode=md.match(/\\b\\d{6}\\b/)?.[0]||null;
-      const maps=(md.match(/https?:\\/\\/[^\\s)\\]>"]+/g)||[]).find(x=>/google\\.[^/]+\\/maps|maps\\.app\\.goo\\.gl/i.test(x))||null;
-      const patch:any={social_links:{...(row.social_links||{}),...sl},source_evidence:{...(row.source_evidence||{}),scraped_url:row.website_url||row.source_url,scraped_at:new Date().toISOString(),firecrawl_event_id:r.data?.event?.id||null,extracted_emails:es,extracted_phone_candidates:ps,extracted_postcode:postcode,markdown_excerpt:md.slice(0,4000)},last_checked_at:new Date().toISOString(),updated_at:new Date().toISOString()};
-      if(!row.email&&es.length)patch.email=es[0];if(!row.phone&&ps.length)patch.phone=ps[0];if(!row.postcode&&postcode)patch.postcode=postcode;if(!row.google_business_url&&maps)patch.google_business_url=maps;
-      if(row.verification_status==="discovered")patch.verification_status="public_source_checked";
-      patch.ingest_status=(es.length||ps.length||Object.keys(sl).length)?"needs_review":row.ingest_status;
-      const u=await supabase.from("resofit_external_business_sources" as any).update(patch).eq("id",row.id);if(u.error)throw u.error;
-      setNotice("Enriched "+row.business_name+": "+es.length+" email candidates, "+ps.length+" phone candidates, "+Object.keys(sl).length+" social URLs. Review before outreach.");await load();
-    } catch(e) {setError(e instanceof Error?e.message:"Scrape/enrichment failed.");} finally {setBusy("");}
-  };
   const setStatus = async (row:Row,field:string,value:string) => {
     if(!supabase)return;setBusy("status");const r=await supabase.from("resofit_external_business_sources" as any).update({[field]:value,updated_at:new Date().toISOString()}).eq("id",row.id);if(r.error)setError(r.error.message);else setNotice("Status saved for "+row.business_name);await load();
   };
