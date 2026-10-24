@@ -122,7 +122,7 @@ function V12EnginePage() {
   if (authLoading) return <main className="min-h-screen bg-[#07080a] p-6 text-white">Authenticating V12 console…</main>;
   if (!session) return <Gate title="V12 Engine Console" body="Sign in to access the production control plane." />;
   if (!isAdmin && !isSuperAdmin) return <Gate title="Restricted control plane" body="CEO/admin authorization is required." />;
-  if (isAdmin && !isSuperAdmin && !twoFactorVerified) return <Gate title="MFA required" body="Complete the required second factor before opening production telemetry." />;
+  if (!twoFactorVerified) return <Gate title="MFA required" body="Complete the required second factor before opening production telemetry." />;
 
   return (
     <main className="min-h-screen bg-[#07080a] text-white">
