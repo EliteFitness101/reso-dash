@@ -94,9 +94,12 @@ export function AuthProvider({ children }: { children: ReactNode }) {
     if (!supabase) return { error: "Authentication is not configured." };
     const normalized = email.trim().toLowerCase();
     if (!normalized.includes("@")) return { error: "Enter a valid email address." };
+    const returnPath = window.location.pathname === "/" ? "/today" : window.location.pathname;
+    const returnUrl = new URL(returnPath, "https://dashboard.resofit.fit");
+    returnUrl.search = window.location.search;
     const { error } = await supabase.auth.signInWithOtp({
       email: normalized,
-      options: { emailRedirectTo: "https://dashboard.resofit.fit/ceo-growth" },
+      options: { emailRedirectTo: returnUrl.toString() },
     });
     return { error: error?.message ?? null };
   };
