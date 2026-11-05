@@ -22,7 +22,7 @@ type Snapshot = {
   revenue: { daily: Record<string, unknown>[]; today: Record<string, unknown> | null };
   operating_evidence: { content_queue: number; growth_rows: number; security_events: number; recruitment_candidates: number; training_assignments: number; certificates: number; learning_events: number };
   gate: Record<string, boolean>;
-  social: { total_destinations: number; active_destinations: number; verified_destinations: number; by_platform: { platform: string; total: number; active: number; verified: number }[]; destinations: Destination[]; last_sync: { created_at: string; payload: Record<string, unknown> } | null; query_ok: boolean };
+  social: { total_destinations: number; active_destinations: number; verified_destinations: number; fresh_verified_destinations: number; by_platform: { platform: string; total: number; active: number; verified: number; fresh_verified: number }[]; destinations: Destination[]; last_sync: { created_at: string; payload: Record<string, unknown> } | null; query_ok: boolean };
   portfolio: { source_observations_24h: number; generated_drafts: number; reviewed_drafts: number; latest_draft: { id: string; source: string; event_type: string; topic: string; created_at: string; linkedin_headline?: string | null; source_urls?: string[] } | null; recent_events: { id: string; source: string; event_type: string; topic: string; created_at: string }[]; query_ok: boolean };
   endpoints: { name: string; slug: string; path: string; method: string; purpose?: string }[];
   provider_routes?: { route_id:string; provider:string; service_type:string; status:string; owner_node_id:string|null; endpoint_class:string|null; fallback_provider:string|null; config:Record<string,unknown>; visibility:string|null; updated_at:string|null }[];
@@ -311,7 +311,7 @@ function V12EnginePage() {
             <div className="mb-4 grid gap-2 sm:grid-cols-3">
               <Kpi label="Registered" value={String(data?.social.total_destinations ?? "—")} />
               <Kpi label="Active" value={String(data?.social.active_destinations ?? "—")} />
-              <Kpi label="Active + fresh verified" value={String(data?.social.verified_destinations ?? "—")} />
+              <Kpi label="Active + fresh verified" value={String(data?.social.fresh_verified_destinations ?? "—")} />
             </div>
             <div className="space-y-2">
               {(data?.social.destinations ?? []).map(d => <div key={d.provider + d.platform + d.external_channel_id} className="flex flex-col gap-2 rounded-xl border border-white/7 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
@@ -500,7 +500,7 @@ function V12EnginePage() {
           <div className="space-y-5">
             <section className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
               <Metric icon={Database} label="Canonical telemetry" value={data ? "LOADED" : "WAITING"} sub="Authenticated V12 dashboard function" good={Boolean(data)} warn={!data} />
-              <Metric icon={Globe2} label="Social destinations" value={String(data?.social.total_destinations ?? "—")} sub={`${data?.social.active_destinations ?? "—"} active · ${data?.social.verified_destinations ?? "—"} verified`} good={Boolean(data?.social.query_ok)} />
+              <Metric icon={Globe2} label="Social destinations" value={String(data?.social.total_destinations ?? "—")} sub={`${data?.social.active_destinations ?? "—"} active · ${data?.social.fresh_verified_destinations ?? "—"} fresh verified`} good={Boolean(data?.social.query_ok)} />
               <Metric icon={FileInput} label="Portfolio ingest (24h)" value={String(data?.portfolio.source_observations_24h ?? "—")} sub="Learning-event count" good={Boolean(data?.portfolio.query_ok)} />
               <Metric icon={Activity} label="Last channel sync" value={data?.social.last_sync ? when(data.social.last_sync.created_at) : "No sync evidence"} sub="Registry sync event" good={Boolean(data?.social.last_sync)} />
             </section>
@@ -537,7 +537,7 @@ function V12EnginePage() {
             <section className="grid gap-3 sm:grid-cols-3">
               <Metric icon={Globe2} label="Registered destinations" value={String(data?.social.total_destinations ?? "—")} sub="social_destinations registry" good={Boolean(data?.social.query_ok)} />
               <Metric icon={CheckCircle2} label="Active + verified" value={String(data?.social.verified_destinations ?? "—")} sub="Active and timestamp-verified" good={Boolean(data?.social.verified_destinations)} />
-              <Metric icon={Activity} label="Active but unverified" value={String(Math.max(0, (data?.social.active_destinations ?? 0) - (data?.social.verified_destinations ?? 0)))} sub="Requires fresh verification" warn={Boolean(data && data.social.active_destinations > data.social.verified_destinations)} />
+              <Metric icon={Activity} label="Active but stale / unverified" value={String(Math.max(0, (data?.social.active_destinations ?? 0) - (data?.social.fresh_verified_destinations ?? 0)))} sub="Requires fresh verification" warn={Boolean(data && data.social.active_destinations > data.social.verified_destinations)} />
             </section>
             <Panel title="ChatB2K publisher routes & live switches" icon={Workflow}>
               <p className="mb-3 text-xs leading-5 text-white/45">These settings are persisted in the ChatB2K control plane. Activating a provider route does not bypass per-host allowlists, rights/originality review, asset QA, channel verification, rate limits or queue approval.</p>
