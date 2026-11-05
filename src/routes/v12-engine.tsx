@@ -28,6 +28,16 @@ type Snapshot = {
   provider_routes?: { route_id:string; provider:string; service_type:string; status:string; owner_node_id:string|null; endpoint_class:string|null; fallback_provider:string|null; config:Record<string,unknown>; visibility:string|null; updated_at:string|null }[];
   publishing_settings?: { paused:boolean; scheduler_enabled:boolean; organization_id:string|null; updated_at:string|null } | null;
   qa?: { latest_checks: { service_name: string; status: string; latency_ms: number | null; version: string | null; metadata: Record<string, unknown>; checked_at: string }[]; query_ok: boolean };
+  runtime?: {
+    observed_at: string;
+    query_ok: Record<string, boolean>;
+    credentials: { references: { credential_ref: string; credential_kind: string; project_ref: string; secret_store: string; secret_name: string; env_name: string; purpose: string; status: string; value_present: boolean | null; last_verified_at: string | null }[]; present_in_vault_or_registry: number; missing: number; unverified: number; values_returned: false };
+    gemini: { calls_24h: number; success_24h: number; failed_24h: number; last_call_at: string | null; last_success_at: string | null; last_failure_at: string | null; functions: string[]; key_attribution: string };
+    scheduled_jobs: { total: number; scheduler_verified: number; blocked: number; worker_effect_verified: number; jobs: { binding_id: string; job_name: string; status: string; last_verified_at: string | null; function_slug: string | null; worker_ref: string | null; node_id: string | null; active: boolean | null; runs_24h: number | null; latest_run: string | null; latest_status: string | null; verification_level: string; worker_effect_verified: boolean; latest_message: string | null }[] };
+    workers: { worker_name: string; version: string; status: string; last_run_at: string | null; last_heartbeat_at: string | null; last_duration_ms: number | null; last_processed: number | null; last_failed: number | null; last_skipped: number | null; total_runs: number | null; total_processed: number | null; total_failed: number | null; updated_at: string | null; health_evidence: string }[];
+    flow_generation: { events_24h: number; status_counts: Record<string, number>; assets_linked: number; latest_event_at: string | null };
+    elite_media: { jobs_24h: number; status_counts: Record<string, number>; ready_with_output: number; failed: number; latest_updated_at: string | null };
+  };
 };
 
 const when = (value?: string | null) => value ? new Date(value).toLocaleString("en-NG", { dateStyle: "medium", timeStyle: "short" }) : "No runtime evidence";
@@ -55,7 +65,11 @@ function V12EnginePage() {
     setLoading(false);
   };
 
-  useEffect(() => { void load(); }, [session?.access_token]);
+  useEffect(() => {
+    void load();
+    const refreshTimer = window.setInterval(() => { void load(); }, 60_000);
+    return () => window.clearInterval(refreshTimer);
+  }, [session?.access_token]);
 
   const runAction = async (action: "sync" | "portfolio" | "qa" | "assessment") => {
     if (!supabase) { setError("Supabase is not configured in this deployment."); return; }
@@ -168,6 +182,66 @@ function V12EnginePage() {
           <Metric icon={Database} label="Learning events" value={data ? data.operating_evidence.learning_events.toLocaleString("en-NG") : "—"} sub="Canonical ChatB2K learning store" good />
         </section>
 
+        <section className="mt-5 grid gap-5 xl:grid-cols-2">
+          <Panel title="Provider runtime proof" icon={Zap}>
+            <div className="grid gap-2 sm:grid-cols-3">
+              <Kpi label="Gemini calls · 24h" value={String(data?.runtime?.gemini.calls_24h ?? "—")} />
+              <Kpi label="Successful · 24h" value={String(data?.runtime?.gemini.success_24h ?? "—")} />
+              <Kpi label="Failed · 24h" value={String(data?.runtime?.gemini.failed_24h ?? "—")} />
+            </div>
+            <p className="mt-3 text-[11px] text-white/45">Last success: {when(data?.runtime?.gemini.last_success_at)} · Last call: {when(data?.runtime?.gemini.last_call_at)}</p>
+            <p className="mt-2 text-[10px] text-white/35">Provider requests prove successful Gemini access for the logged runtime path. The current usage ledger does not attribute each call to a specific key alias. Secret values are never returned.</p>
+            <div className="mt-4 space-y-2">
+              {(data?.runtime?.credentials.references ?? []).map((key) => <div key={key.credential_ref} className="rounded-lg border border-white/10 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2"><span className="break-all font-mono text-[10px] text-white/75">{key.credential_ref}</span><Badge good={key.value_present === true} warn={key.value_present !== true}>{key.value_present === true ? "VALUE PRESENT" : key.value_present === false ? "MISSING" : "UNVERIFIED"}</Badge></div>
+                <div className="mt-1 text-[10px] text-white/35">{key.secret_store} · {key.secret_name || key.env_name || "reference only"} · {key.status || "status unknown"} · verified {when(key.last_verified_at)}</div>
+              </div>)}
+              {!data?.runtime?.credentials.references.length && <p className="text-sm text-white/40">Credential reference telemetry unavailable.</p>}
+            </div>
+          </Panel>
+          <Panel title="Scheduled jobs and worker health" icon={Activity}>
+            <div className="grid gap-2 sm:grid-cols-4">
+              <Kpi label="Cron bindings" value={String(data?.runtime?.scheduled_jobs.total ?? "—")} />
+              <Kpi label="Scheduler success" value={String(data?.runtime?.scheduled_jobs.scheduler_verified ?? "—")} />
+              <Kpi label="Blocked / failed" value={String(data?.runtime?.scheduled_jobs.blocked ?? "—")} />
+              <Kpi label="Business effects verified" value={String(data?.runtime?.scheduled_jobs.worker_effect_verified ?? "—")} />
+            </div>
+            <div className="mt-4 max-h-80 space-y-2 overflow-auto pr-1">
+              {(data?.runtime?.scheduled_jobs.jobs ?? []).map((job) => <div key={job.binding_id} className="rounded-lg border border-white/10 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2"><span className="break-all text-xs font-medium">{job.job_name || job.binding_id}</span><Badge good={job.worker_effect_verified} warn={!job.worker_effect_verified || job.latest_status === "failed"}>{job.worker_effect_verified ? "EFFECT VERIFIED" : job.latest_status === "failed" ? "FAILED" : "SCHEDULER ONLY"}</Badge></div>
+                <div className="mt-1 text-[10px] text-white/40">{job.status} · latest {job.latest_status || "unknown"} · {when(job.latest_run)} · sync {when(job.last_verified_at)}</div>
+              </div>)}
+              {!data?.runtime?.scheduled_jobs.jobs.length && <p className="text-sm text-white/40">Cron binding telemetry unavailable.</p>}
+            </div>
+            <div className="mt-4 border-t border-white/10 pt-3">
+              <div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/45">Worker records</div>
+              {(data?.runtime?.workers ?? []).map((worker) => <div key={worker.worker_name} className="mb-2 rounded-lg border border-white/10 px-3 py-2">
+                <div className="flex flex-wrap items-center justify-between gap-2"><span className="text-xs font-medium">{worker.worker_name}</span><Badge good={Boolean(worker.last_heartbeat_at) && !worker.last_failed} warn={!worker.last_heartbeat_at || Boolean(worker.last_failed)}>{worker.last_heartbeat_at ? worker.status : "NO HEARTBEAT"}</Badge></div>
+                <div className="mt-1 text-[10px] text-white/40">v{worker.version || "—"} · heartbeat {when(worker.last_heartbeat_at)} · last run {when(worker.last_run_at)} · processed {worker.last_processed ?? "—"} · failed {worker.last_failed ?? "—"}</div>
+              </div>)}
+              {!data?.runtime?.workers.length && <p className="text-sm text-white/40">No worker runtime records returned.</p>}
+            </div>
+          </Panel>
+        </section>
+        <section className="mt-5 grid gap-5 xl:grid-cols-2">
+          <Panel title="Media execution outcomes" icon={Film}>
+            <div className="grid gap-2 sm:grid-cols-4">
+              <Kpi label="Flow events · 24h" value={String(data?.runtime?.flow_generation.events_24h ?? "—")} />
+              <Kpi label="Flow assets linked" value={String(data?.runtime?.flow_generation.assets_linked ?? "—")} />
+              <Kpi label="Elite jobs · 24h" value={String(data?.runtime?.elite_media.jobs_24h ?? "—")} />
+              <Kpi label="Ready with output" value={String(data?.runtime?.elite_media.ready_with_output ?? "—")} />
+            </div>
+            <div className="mt-4 grid gap-3 sm:grid-cols-2">
+              <div><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/45">Flow generation statuses</div>{Object.entries(data?.runtime?.flow_generation.status_counts ?? {}).map(([status,count]) => <div key={status} className="flex justify-between border-b border-white/10 py-1 text-xs"><span className="text-white/55">{status}</span><span>{count}</span></div>)}</div>
+              <div><div className="mb-2 text-xs font-semibold uppercase tracking-wider text-white/45">Elite media job statuses</div>{Object.entries(data?.runtime?.elite_media.status_counts ?? {}).map(([status,count]) => <div key={status} className="flex justify-between border-b border-white/10 py-1 text-xs"><span className="text-white/55">{status}</span><span>{count}</span></div>)}</div>
+            </div>
+            <p className="mt-3 text-[10px] text-white/35">A queued, ready or scheduler-success status is not proof of a playable MP4. Only jobs with an output artifact count as ready-with-output; playback and QA still require separate checks.</p>
+          </Panel>
+          <Panel title="Telemetry freshness" icon={RefreshCw}>
+            <div className="space-y-2">{Object.entries(data?.runtime?.query_ok ?? {}).map(([name,ok]) => <div key={name} className="flex items-center justify-between rounded-lg border border-white/10 px-3 py-2 text-xs"><span className="uppercase text-white/55">{name.replaceAll("_"," ")}</span><Badge good={ok}>{ok ? "QUERY OK" : "QUERY ERROR"}</Badge></div>)}</div>
+            <p className="mt-3 text-[10px] text-white/35">Snapshot generated {when(data?.runtime?.observed_at)} · page refresh interval 60 seconds. Job and credential evidence retains its source timestamp.</p>
+          </Panel>
+        </section>
         <section className="mt-5">
           <Panel title="External commerce intelligence" icon={Cable}>
             {(() => {
@@ -434,12 +508,12 @@ function V12EnginePage() {
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-3">
                 {[
                   {name:"Supabase · resonance-fitness",role:"Canonical registry, control plane, learning events and Edge Functions",status:data ? "TELEMETRY READ" : "NOT LOADED",good:Boolean(data),warn:false},
-                  {name:"Gemini API / Google AI Studio",role:"AI enrichment and media-generation provider path",status:"LAST MEDIA ATTEMPT: HTTP 429",good:false,warn:true},
+                  {name:"Gemini API / Google AI Studio",role:"Provider request telemetry and key-reference metadata",status:data?.runtime?.gemini ? `${data.runtime.gemini.success_24h}/${data.runtime.gemini.calls_24h} SUCCESS · ${data.runtime.gemini.failed_24h} FAILURES (24H)` : "NO PROVIDER TELEMETRY",good:Boolean(data?.runtime?.gemini && data.runtime.gemini.calls_24h>0 && data.runtime.gemini.failed_24h===0),warn:Boolean(data?.runtime?.gemini?.failed_24h)},
                   {name:"Firecrawl",role:"Portfolio source discovery and ecosystem route QA",status:(data?.endpoints ?? []).some(e => /portfolio-intelligence|ecosystem-qa/.test(e.slug)) ? "ENDPOINT REGISTERED" : "NOT IN SNAPSHOT",good:Boolean((data?.endpoints ?? []).some(e => /portfolio-intelligence|ecosystem-qa/.test(e.slug))),warn:false},
                   {name:"Buffer",role:"Approved content distribution and connected social destinations",status:data?.social.total_destinations ? `${data.social.active_destinations} ACTIVE DESTINATIONS` : "NO DESTINATION EVIDENCE",good:Boolean(data?.social.total_destinations),warn:false},
                   {name:"Paystack",role:"Payment verification/webhook and commerce payment lifecycle",status:"NOT LIVE-CHECKED IN THIS VIEW",good:false,warn:false},
                   {name:"Dropbox · BIGO archive",role:"Intended archive for raw captures, metadata, processed media and logs",status:"NOT LIVE-CHECKED IN THIS VIEW",good:false,warn:false},
-                  {name:"Google Flow / Veo",role:"External/manual video-generation surface; distinct from Gemini API routing",status:"API CONNECTIVITY NOT VERIFIED",good:false,warn:true},
+                  {name:"Google Flow / Veo",role:"Flow event ledger; event records do not independently prove provider acceptance",status:data?.runtime?.flow_generation ? `${data.runtime.flow_generation.events_24h} FLOW EVENTS / 24H · ${data.runtime.flow_generation.assets_linked} ASSETS LINKED` : "NO FLOW TELEMETRY",good:false,warn:true},
                   {name:"ImageKit",role:"Product media delivery and transformations",status:"NOT LIVE-CHECKED IN THIS VIEW",good:false,warn:false},
                   {name:"Cloudinary",role:"Image/video asset processing and delivery",status:"NOT LIVE-CHECKED IN THIS VIEW",good:false,warn:false},
                   {name:"Cloudflare R2 / media.resofit.fit",role:"Proposed media object storage and CDN delivery route",status:"NOT LIVE-CHECKED IN THIS VIEW",good:false,warn:false},
@@ -452,7 +526,7 @@ function V12EnginePage() {
               <div className="grid gap-3 sm:grid-cols-2 xl:grid-cols-4">
                 {[["1","DISCOVER","Source URL / brief / SKU"],["2","GENERATE","Configured provider and model"],["3","INGEST","Store file + metadata + provenance"],["4","QA & APPROVE","Asset checks, human approval, publish gate"]].map(([n,title,desc]) => <div key={n} className="rounded-xl border border-white/10 p-3"><div className="flex h-7 w-7 items-center justify-center rounded-full border border-amber-300/25 text-xs font-semibold text-amber-200">{n}</div><div className="mt-3 text-sm font-semibold">{title}</div><p className="mt-1 text-xs leading-5 text-white/45">{desc}</p></div>)}
               </div>
-              <div className="mt-4 rounded-xl border border-amber-300/15 bg-amber-300/[0.035] p-3"><div className="text-sm font-semibold text-amber-100">Last audited factory result</div><p className="mt-1 text-xs leading-5 text-white/50">The prior RESO-DIG-LIFE-001 attempt was rejected at the Gemini video submission step with HTTP 429. The last recorded job state was awaiting_ingest with zero registered and zero approved assets. This is historical audit evidence, not a fresh job query.</p><a href="/digital-products" className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/[0.05]">Open Digital Product Factory <ExternalLink className="h-3 w-3" /></a></div>
+              <div className="mt-4 rounded-xl border border-amber-300/15 bg-amber-300/[0.035] p-3"><div className="text-sm font-semibold text-amber-100">Live factory outcome snapshot · last 24h</div><p className="mt-1 text-xs leading-5 text-white/50">Jobs: {data?.runtime?.elite_media.jobs_24h ?? "—"} · ready with output: {data?.runtime?.elite_media.ready_with_output ?? "—"} · failed: {data?.runtime?.elite_media.failed ?? "—"} · Flow events: {data?.runtime?.flow_generation.events_24h ?? "—"}. A scheduler success or ready label without an output artifact is not counted as a delivered render.</p><a href="/digital-products" className="mt-3 inline-flex items-center gap-2 rounded-lg border border-white/10 px-3 py-2 text-xs hover:bg-white/[0.05]">Open Digital Product Factory <ExternalLink className="h-3 w-3" /></a></div>
             </Panel>
           </div>
         )}
