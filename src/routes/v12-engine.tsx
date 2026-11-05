@@ -13,7 +13,7 @@ type EngineRow = {
 };
 type Destination = {
   provider: string; platform: string; display_name: string; external_channel_id: string; active: boolean;
-  daily_limit: number; last_verified_at: string | null; capabilities: Record<string, boolean>; queue_paused: boolean;
+  daily_limit: number; last_verified_at: string | null; verification_status: "fresh" | "stale" | "unverified" | "inactive"; capabilities: Record<string, boolean>; queue_paused: boolean;
 };
 type Snapshot = {
   ok: boolean; generated_at: string; engine: string;
@@ -311,12 +311,12 @@ function V12EnginePage() {
             <div className="mb-4 grid gap-2 sm:grid-cols-3">
               <Kpi label="Registered" value={String(data?.social.total_destinations ?? "—")} />
               <Kpi label="Active" value={String(data?.social.active_destinations ?? "—")} />
-              <Kpi label="Active + verified" value={String(data?.social.verified_destinations ?? "—")} />
+              <Kpi label="Active + fresh verified" value={String(data?.social.verified_destinations ?? "—")} />
             </div>
             <div className="space-y-2">
               {(data?.social.destinations ?? []).map(d => <div key={d.provider + d.platform + d.external_channel_id} className="flex flex-col gap-2 rounded-xl border border-white/7 px-3 py-3 sm:flex-row sm:items-center sm:justify-between">
-                <div className="min-w-0"><div className="text-sm font-medium">{d.display_name}</div><div className="text-[11px] text-white/40">{platformLabel(d.platform)} · {d.provider} · limit {d.daily_limit}/day</div><div className="text-[10px] text-white/30">Verified {when(d.last_verified_at)}</div></div>
-                <div className="flex items-center gap-2"><Badge good={d.active && Boolean(d.last_verified_at)}>{d.active && d.last_verified_at ? "VERIFIED" : d.active ? "ACTIVE / UNVERIFIED" : "INACTIVE"}</Badge>{d.queue_paused && <Badge warn>QUEUE PAUSED</Badge>}</div>
+                <div className="min-w-0"><div className="text-sm font-medium">{d.display_name}</div><div className="text-[11px] text-white/40">{platformLabel(d.platform)} · {d.provider} · limit {d.daily_limit}/day</div><div className="text-[10px] text-white/30">Verification {d.verification_status} · {when(d.last_verified_at)}</div></div>
+                <div className="flex items-center gap-2"><Badge good={d.verification_status === "fresh"} warn={d.active && d.verification_status !== "fresh"}>{d.verification_status === "fresh" ? "ACTIVE + FRESH" : d.verification_status === "stale" ? "ACTIVE / STALE" : d.active ? "ACTIVE / UNVERIFIED" : "INACTIVE"}</Badge>{d.queue_paused && <Badge warn>QUEUE PAUSED</Badge>}</div>
               </div>)}
               {!data?.social.destinations?.length && <p className="text-sm text-white/40">No social destinations returned.</p>}
             </div>
