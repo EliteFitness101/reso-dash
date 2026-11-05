@@ -118,14 +118,18 @@ function CEODashboard() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const refreshTimer = window.setInterval(() => { void load(); }, 60_000);
+    return () => window.clearInterval(refreshTimer);
+  }, [load]);
 
   const targetProgress = Math.min(100, ((snapshot?.revenue30d ?? 0) / TARGET) * 100);
   const health = useMemo(() => {
     if (!snapshot) return { label: "SYNCING", tone: "muted" as const };
     if (snapshot.failedCaptures > 0) return { label: "EXCEPTION", tone: "red" as const };
     if (snapshot.blockedToday > 0) return { label: "GUARDED", tone: "gold" as const };
-    return { label: "OPERATING", tone: "green" as const };
+    return { label: "METRICS LOADED", tone: "green" as const };
   }, [snapshot]);
 
   if (!isSuperAdmin) {
@@ -184,12 +188,12 @@ function CEODashboard() {
           <div className="glass-card rounded-3xl p-5">
             <p className="text-[10px] uppercase tracking-[0.28em] text-gold">Autopilot state</p>
             <div className="mt-4 space-y-3">
-              <StateRow icon={<Activity size={14} />} label="Observe events" state="LIVE" />
-              <StateRow icon={<Film size={14} />} label="Create next content" state="LIVE" />
-              <StateRow icon={<UserPlus size={14} />} label="Recruit next host" state="LIVE" />
+              <StateRow icon={<Activity size={14} />} label="Observe events" state="TRACKED" />
+              <StateRow icon={<Film size={14} />} label="Create next content" state="TRACKED" />
+              <StateRow icon={<UserPlus size={14} />} label="Recruit next host" state="TRACKED" />
               <StateRow icon={<Megaphone size={14} />} label="Convert / publish" state="GATED" />
               <StateRow icon={<ShieldCheck size={14} />} label="Safety + financial gates" state="HARD GATE" />
-              <StateRow icon={<GitBranch size={14} />} label="Learn + repeat" state="LIVE" />
+              <StateRow icon={<GitBranch size={14} />} label="Learn + repeat" state="TRACKED" />
             </div>
           </div>
         </section>
@@ -227,7 +231,7 @@ function CEODashboard() {
         </section>
 
         <footer className="mt-5 flex flex-col gap-2 border-t border-border pt-4 text-[9px] font-mono uppercase tracking-wider text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>Reso-Dash · CEO growth control surface</span>
+          <span>Reso-Dash · CEO growth control surface · auto-refresh 60s</span>
           <span>Production source: resonance-fitness · no secrets exposed</span>
         </footer>
       </div>
