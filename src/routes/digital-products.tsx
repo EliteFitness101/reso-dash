@@ -1,5 +1,5 @@
 import { createFileRoute, Link, useNavigate } from "@tanstack/react-router";
-import { useEffect, useMemo, useState } from "react";
+import { useEffect, useMemo, useRef, useState } from "react";
 import { CheckCircle2, Clapperboard, Image, Play, RefreshCw, Sparkles, Video } from "lucide-react";
 import { useAuth } from "@/lib/auth-context";
 import { supabase } from "@/lib/supabase-browser";
@@ -14,6 +14,8 @@ function DigitalProductsFactoryPage(){
  const {session,loading:authLoading,isAdmin,isSuperAdmin,twoFactorVerified}=useAuth();
  const [data,setData]=useState<Snapshot>({jobs:[],assets:[]});
  const [loading,setLoading]=useState(false);
+ const loadingRef=useRef(false);
+ useEffect(()=>{loadingRef.current=loading;},[loading]);
  const [sku,setSku]=useState("");
  const [message,setMessage]=useState("");
  const [spec,setSpec]=useState<any>(null);
@@ -31,7 +33,11 @@ function DigitalProductsFactoryPage(){
   try{const r=await call({action:"status"});setData({jobs:r.jobs||[],assets:r.assets||[]});}
   catch(e){setMessage(e instanceof Error?e.message:String(e));}finally{setLoading(false);}
  }
- useEffect(()=>{void load()},[session?.access_token]);
+ useEffect(()=>{
+  void load();
+  const refreshTimer=window.setInterval(()=>{if(!loadingRef.current)void load();},60_000);
+  return ()=>window.clearInterval(refreshTimer);
+ },[session?.access_token]);
 
  async function generate(jobId:string,action:"start"|"poll"){setLoading(true);setMessage("");try{if(!supabase)throw new Error("Supabase client unavailable.");if(action==="poll"){setMessage("Free-tier mode uses manual AI Studio / Flow media generation; poll is not required.");await load();return;}const {data:r,error}=await supabase.functions.invoke("digital-product-media-generator-free",{body:{action:"free_plan",job_id:jobId}});if(error)throw error;if(!r?.ok)throw new Error(r?.error||"Free-tier factory request failed");setMessage("Free-tier blueprint generated. Use the approved prompts in Google AI Studio / Flow, then ingest the resulting media.");await load();}catch(e){setMessage(e instanceof Error?e.message:String(e));}finally{setLoading(false);}}
 
