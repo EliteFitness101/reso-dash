@@ -130,7 +130,8 @@ function V12EnginePage() {
     if (!data) return "CHECKING";
     if (data.orchestration.global_kill) return "GLOBAL HALT";
     const active = data.engines.filter(e => e.status === "ACTIVE" && !e.kill_switch_enabled).length;
-    return active === data.engines.length && data.gate.engine_registry_ok && data.gate.control_plane_ok ? "OPERATIONAL" : "DEGRADED";
+    const runtimeFlags = data.engines.filter(e => e.evidence?.runtime_verified === true).length;
+    return active === data.engines.length && data.gate.engine_registry_ok && data.gate.control_plane_ok ? `${runtimeFlags}/${data.engines.length} RUNTIME FLAGS` : "DEGRADED";
   }, [data]);
 
   if (authLoading) return <main className="min-h-screen bg-[#07080a] p-6 text-white">Authenticating V12 console…</main>;
@@ -437,8 +438,8 @@ function V12EnginePage() {
               <div className="mb-3 text-xs text-white/40">Registry inventory and heartbeat evidence. A registered engine is not automatically proof of a successful recent execution.</div>
               <div className="space-y-2">
                 {(data?.engines ?? []).map(e => <div key={e.engine_key} className="grid gap-3 rounded-xl border border-white/10 p-3 sm:grid-cols-[1fr_auto] sm:items-center">
-                  <div className="min-w-0"><div className="break-words text-sm font-semibold">{e.engine_name}</div><div className="mt-1 break-all font-mono text-[10px] text-white/40">{e.engine_key}</div><div className="mt-1 text-xs text-white/50">{e.domain} · {e.version} · health {e.health_score} · evidence {e.evidence_count}</div><div className="mt-1 text-[10px] text-white/35">Heartbeat: {when(e.last_heartbeat_at)} · Last run: {when(e.last_run_at)}</div></div>
-                  <div className="flex flex-wrap items-center gap-2"><Badge good={e.status === "ACTIVE" && !e.kill_switch_enabled} warn={e.kill_switch_enabled}>{e.kill_switch_enabled ? "KILL SWITCH ON" : e.status}</Badge><Badge>{e.control_plane}</Badge></div>
+                  <div className="min-w-0"><div className="break-words text-sm font-semibold">{e.engine_name}</div><div className="mt-1 break-all font-mono text-[10px] text-white/40">{e.engine_key}</div><div className="mt-1 text-xs text-white/50">{e.domain} · {e.version} · registry score {e.health_score} · evidence {e.evidence_count}</div><div className="mt-1 text-[10px] text-white/35">Registry heartbeat: {when(e.last_heartbeat_at)} · execution flag: {e.evidence?.runtime_verified === true ? "set; see operation evidence" : "not set"} · run timestamp is not used as proof</div></div>
+                  <div className="flex flex-wrap items-center gap-2"><Badge good={e.evidence?.runtime_verified === true && e.status === "ACTIVE" && !e.kill_switch_enabled} warn={e.kill_switch_enabled || e.evidence?.runtime_verified !== true}>{e.kill_switch_enabled ? "KILL SWITCH ON" : e.evidence?.runtime_verified === true ? "RUNTIME FLAG SET" : "REGISTRY ONLY"}</Badge><Badge>{e.control_plane}</Badge></div>
                 </div>)}
                 {!data?.engines.length && <p className="text-sm text-white/45">No engine rows returned. Refresh telemetry and inspect the error state before assuming the registry is empty.</p>}
               </div>
