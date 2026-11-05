@@ -31,6 +31,7 @@ type Snapshot = {
   runtime?: {
     observed_at: string;
     query_ok: Record<string, boolean>;
+    key_availability: { primary_gemini: { environment_present: boolean; vault_resolves: boolean; available: boolean }; automation_secondary: { environment_present: boolean; vault_resolves: boolean; available: boolean }; secondary_key1: { environment_present: boolean; vault_resolves: boolean; available: boolean }; values_returned: false; note: string };
     credentials: { references: { credential_ref: string; credential_kind: string; project_ref: string; secret_store: string; secret_name: string; env_name: string; purpose: string; status: string; value_present: boolean | null; last_verified_at: string | null }[]; present_in_vault_or_registry: number; missing: number; unverified: number; values_returned: false };
     gemini: { calls_24h: number; success_24h: number; failed_24h: number; last_call_at: string | null; last_success_at: string | null; last_failure_at: string | null; functions: string[]; key_attribution: string };
     scheduled_jobs: { total: number; scheduler_verified: number; blocked: number; worker_effect_verified: number; jobs: { binding_id: string; job_name: string; status: string; last_verified_at: string | null; function_slug: string | null; worker_ref: string | null; node_id: string | null; active: boolean | null; runs_24h: number | null; latest_run: string | null; latest_status: string | null; verification_level: string; worker_effect_verified: boolean; latest_message: string | null }[] };
@@ -191,6 +192,13 @@ function V12EnginePage() {
               <Kpi label="Failed · 24h" value={String(data?.runtime?.gemini.failed_24h ?? "—")} />
             </div>
             <p className="mt-3 text-[11px] text-white/45">Last success: {when(data?.runtime?.gemini.last_success_at)} · Last call: {when(data?.runtime?.gemini.last_call_at)}</p>
+            <div className="mt-3 grid gap-2 sm:grid-cols-3">
+              {([["GEMINI_API_KEY",data?.runtime?.key_availability.primary_gemini],["GEMINI_AUTOMATION_API_KEY",data?.runtime?.key_availability.automation_secondary],["GEMINI_API_KEY1",data?.runtime?.key_availability.secondary_key1]] as const).map(([name,key]) => <div key={name} className="rounded-lg border border-white/10 px-3 py-2">
+                <div className="break-all font-mono text-[10px] text-white/55">{name}</div>
+                <Badge good={Boolean(key?.available)} warn={!key?.available}>{key?.available ? "AVAILABLE IN EDGE RUNTIME" : "NOT AVAILABLE"}</Badge>
+                <div className="mt-1 text-[10px] text-white/35">env {key?.environment_present ? "present" : "absent"} · Vault {key?.vault_resolves ? "resolves" : "not resolving"}</div>
+              </div>)}
+            </div>
             <p className="mt-2 text-[10px] text-white/35">Provider requests prove successful Gemini access for the logged runtime path. The current usage ledger does not attribute each call to a specific key alias. Secret values are never returned.</p>
             <div className="mt-4 space-y-2">
               {(data?.runtime?.credentials.references ?? []).map((key) => <div key={key.credential_ref} className="rounded-lg border border-white/10 px-3 py-2">
