@@ -74,6 +74,18 @@ export default { fetch: withSupabase({auth:"user"}, async (_req,ctx)=>{
   ctx.supabaseAdmin.from("flow_generation_events").select("status,provider,model,asset_id,created_at,completed_at,failed_at").gte("created_at",since24h).order("created_at",{ascending:false}).limit(250),
   ctx.supabaseAdmin.from("elite_media_generation_jobs").select("job_type,status,output_url,created_at,updated_at").gte("created_at",since24h).order("created_at",{ascending:false}).limit(250)
  ]);
+ const [primaryKeyProbe,automationKeyProbe,secondaryKey1Probe]=await Promise.all([
+  ctx.supabaseAdmin.rpc("get_digital_product_factory_gemini_key"),
+  ctx.supabaseAdmin.rpc("chatb2k_get_runtime_secret",{p_name:"GEMINI_AUTOMATION_API_KEY"}),
+  ctx.supabaseAdmin.rpc("chatb2k_get_runtime_secret",{p_name:"GEMINI_API_KEY1"})
+ ]);
+ const keyAvailability={
+  primary_gemini:{environment_present:Boolean(Deno.env.get("GEMINI_API_KEY")),vault_resolves:!primaryKeyProbe.error&&Boolean(String(primaryKeyProbe.data??"").trim()),available:Boolean(Deno.env.get("GEMINI_API_KEY"))||(!primaryKeyProbe.error&&Boolean(String(primaryKeyProbe.data??"").trim()))},
+  automation_secondary:{environment_present:Boolean(Deno.env.get("GEMINI_AUTOMATION_API_KEY")),vault_resolves:!automationKeyProbe.error&&Boolean(String(automationKeyProbe.data??"").trim()),available:Boolean(Deno.env.get("GEMINI_AUTOMATION_API_KEY"))||(!automationKeyProbe.error&&Boolean(String(automationKeyProbe.data??"").trim()))},
+  secondary_key1:{environment_present:Boolean(Deno.env.get("GEMINI_API_KEY1")),vault_resolves:!secondaryKey1Probe.error&&Boolean(String(secondaryKey1Probe.data??"").trim()),available:Boolean(Deno.env.get("GEMINI_API_KEY1"))||(!secondaryKey1Probe.error&&Boolean(String(secondaryKey1Probe.data??"").trim()))},
+  values_returned:false,
+  note:"Availability is checked inside this Supabase Edge runtime; provider usage proves successful requests separately. Key values are never returned."
+ };
  const gu=geminiUsage.data??[];
  const geminiSuccess=gu.filter((x:any)=>["success","succeeded","ok"].includes(String(x.status??"").toLowerCase())||(Number(x.http_status)>=200&&Number(x.http_status)<300));
  const geminiFailed=gu.filter((x:any)=>Number(x.http_status)>=400||["failed","error"].includes(String(x.status??"").toLowerCase()));
@@ -83,7 +95,8 @@ export default { fetch: withSupabase({auth:"user"}, async (_req,ctx)=>{
  const countStatuses=(rows:any[])=>rows.reduce((a:any,x:any)=>{const k=String(x.status??"unknown").toLowerCase();a[k]=(a[k]??0)+1;return a;},{});
  const runtime={
   observed_at:new Date().toISOString(),
-  query_ok:{credentials:!credentialRefs.error,gemini:!geminiUsage.error,cron:!cronBindings.error,workers:!workerRows.error,flow:!flowRows.error,media:!mediaRows.error},
+  query_ok:{credentials:!credentialRefs.error,gemini:!geminiUsage.error,cron:!cronBindings.error,workers:!workerRows.error,flow:!flowRows.error,media:!mediaRows.error,key_probes:!primaryKeyProbe.error&&!automationKeyProbe.error&&!secondaryKey1Probe.error},
+  key_availability:keyAvailability,
   credentials:{provider:"google_gemini",references:keyRefs,present_in_vault_or_registry:keyRefs.filter((x:any)=>x.value_present===true).length,missing:keyRefs.filter((x:any)=>x.value_present===false).length,unverified:keyRefs.filter((x:any)=>x.value_present===null||x.value_present===undefined).length,values_returned:false,interpretation:"Reference metadata only; a present value is not proof of successful provider use or which alias was selected."},
   gemini:{calls_24h:gu.length,success_24h:geminiSuccess.length,failed_24h:geminiFailed.length,last_call_at:gu[0]?.created_at??null,last_success_at:geminiSuccess[0]?.created_at??null,last_failure_at:geminiFailed[0]?.created_at??null,functions:[...new Set(gu.map((x:any)=>x.function_name).filter(Boolean))],key_attribution:"not recorded by the current usage ledger"},
   scheduled_jobs:{total:cronRows.length,scheduler_verified:cronRows.filter((x:any)=>x.latest_status==="succeeded"&&x.status==="runtime_verified").length,blocked:cronRows.filter((x:any)=>x.status==="blocked"||x.latest_status==="failed").length,worker_effect_verified:cronRows.filter((x:any)=>x.worker_effect_verified===true).length,jobs:cronRows},
