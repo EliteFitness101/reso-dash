@@ -62,7 +62,11 @@ function BigoOpsPage() {
     } finally { setBusy(false); }
   }, [session]);
 
-  useEffect(() => { void load(); }, [load]);
+  useEffect(() => {
+    void load();
+    const refreshTimer = window.setInterval(() => { void load(); }, 60_000);
+    return () => window.clearInterval(refreshTimer);
+  }, [load]);
 
   const metrics = useMemo(() => ({
     hosts: hosts.length,
