@@ -130,6 +130,7 @@ function CEODashboard() {
   }, []);
 
   const changeKillSwitch = useCallback(async (enabled: boolean) => {
+    if (!supabase) { setControlError("Supabase client unavailable."); return; }
     const reason = enabled ? window.prompt("Enter the reason for pausing ChatB2K orchestration:") : "CEO-authorized orchestration resume";
     if (enabled && !reason?.trim()) return;
     const verb = enabled ? "PAUSE ChatB2K orchestration" : "RESUME ChatB2K orchestration";
