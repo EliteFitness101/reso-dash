@@ -76,9 +76,9 @@ export const Route = createFileRoute("/api/ceo-compound-video")({
               "x-goog-api-key": geminiApiKey,
             },
             body: JSON.stringify({
-              model: "gemini-omni-flash-preview",
+              model: "gemini-omni-1.1-flash",
               input: prompt,
-              response_format: { type: "video", aspect_ratio: "16:9" },
+              response_format: { type: "video", aspect_ratio: "16:9", resolution: "360p" },
             }),
           });
 
