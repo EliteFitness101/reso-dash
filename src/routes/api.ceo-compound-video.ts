@@ -76,9 +76,9 @@ export const Route = createFileRoute("/api/ceo-compound-video")({
               "x-goog-api-key": geminiApiKey,
             },
             body: JSON.stringify({
-              model: "gemini-omni-1.1-flash",
+              model: "gemini-omni-flash-preview",
               input: prompt,
-              response_format: { type: "video", aspect_ratio: "16:9", resolution: "360p" },
+              response_format: { type: "video", aspect_ratio: "16:9" },
             }),
           });
 
@@ -98,7 +98,7 @@ export const Route = createFileRoute("/api/ceo-compound-video")({
             .find((item) => item.type === "video" && typeof item.data === "string");
 
           if (!video?.data) {
-            return Response.json({ error: "Gemini completed without returning a video asset." }, { status: 502 });
+            return Response.json({ error: "Gemini completed without returning an inline video asset. Check model delivery limits." }, { status: 502 });
           }
 
           const bytes = Buffer.from(video.data, "base64");
