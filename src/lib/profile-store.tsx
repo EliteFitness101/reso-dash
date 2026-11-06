@@ -52,26 +52,27 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
   const [all, setAll] = useState<SubscriberProfile[]>([]);
   const [currentRsid, setCurrentRsid] = useState<string | null>(null);
 
+  // Migrate away from the old persistent cache: it could contain personal and health/intake data.
+  // Profile records now remain in memory only until a server-backed, access-controlled store is wired in.
   useEffect(() => {
     try {
-      const raw = localStorage.getItem(KEY);
-      if (raw) setAll(JSON.parse(raw));
-      const cur = localStorage.getItem(CUR_KEY);
-      if (cur) setCurrentRsid(cur);
-    } catch {}
+      localStorage.removeItem(KEY);
+      localStorage.removeItem(CUR_KEY);
+    } catch { /* Storage may be disabled by browser policy. */ }
   }, []);
 
   useEffect(() => {
-    try {
-      localStorage.setItem(KEY, JSON.stringify(all));
-    } catch {}
-  }, [all]);
-
-  useEffect(() => {
-    try {
-      if (currentRsid) localStorage.setItem(CUR_KEY, currentRsid);
-    } catch {}
-  }, [currentRsid]);
+    const clearOnIdentityChange = () => {
+      setAll([]);
+      setCurrentRsid(null);
+      try {
+        localStorage.removeItem(KEY);
+        localStorage.removeItem(CUR_KEY);
+      } catch { /* Storage may be disabled by browser policy. */ }
+    };
+    window.addEventListener("resofit:clear-profile-store", clearOnIdentityChange);
+    return () => window.removeEventListener("resofit:clear-profile-store", clearOnIdentityChange);
+  }, []);
 
   const value = useMemo<ProfileStore>(() => {
     const current = all.find((p) => p.rsid === currentRsid) ?? null;
@@ -111,7 +112,7 @@ export function ProfileProvider({ children }: { children: ReactNode }) {
         try {
           localStorage.removeItem(KEY);
           localStorage.removeItem(CUR_KEY);
-        } catch {}
+        } catch { /* Storage may be disabled by browser policy. */ }
       },
     };
   }, [all, currentRsid]);
