@@ -45,6 +45,9 @@ function CEODashboard() {
   const [refreshing, setRefreshing] = useState(false);
   const [error, setError] = useState<string | null>(null);
   const [lastUpdated, setLastUpdated] = useState<Date | null>(null);
+  const [controlState, setControlState] = useState<{ kill_switch_enabled: boolean; kill_switch_reason?: string | null; kill_switched_at?: string | null } | null>(null);
+  const [controlBusy, setControlBusy] = useState(false);
+  const [controlError, setControlError] = useState<string | null>(null);
 
   const load = useCallback(async () => {
     if (!supabase) {
@@ -118,14 +121,53 @@ function CEODashboard() {
     }
   }, []);
 
-  useEffect(() => { void load(); }, [load]);
+  const loadControl = useCallback(async () => {
+    if (!supabase) return;
+    const { data, error } = await supabase.functions.invoke("chatb2k-omnidimensional-control-plane", { body: { action: "status" } });
+    if (error) throw error;
+    if (!data?.ok) throw new Error(data?.error || "Control-plane status unavailable.");
+    setControlState(data.global_control ?? null);
+  }, []);
+
+  const changeKillSwitch = useCallback(async (enabled: boolean) => {
+    if (!supabase) { setControlError("Supabase client unavailable."); return; }
+    const reason = enabled ? window.prompt("Enter the reason for pausing ChatB2K orchestration:") : "CEO-authorized orchestration resume";
+    if (enabled && !reason?.trim()) return;
+    const verb = enabled ? "PAUSE ChatB2K orchestration" : "RESUME ChatB2K orchestration";
+    if (!window.confirm(`${verb}? This changes the canonical control-plane flag.`)) return;
+    setControlBusy(true);
+    setControlError(null);
+    try {
+      const { data, error } = await supabase.functions.invoke("chatb2k-omnidimensional-control-plane", {
+        body: { action: "kill_switch", enabled, reason: reason?.trim() || verb },
+      });
+      if (error) throw error;
+      if (!data?.ok) throw new Error(data?.error || "Control-plane change was rejected.");
+      setControlState(data.control_plane ?? null);
+      await loadControl();
+    } catch (e) {
+      setControlError(e instanceof Error ? e.message : "Control-plane action failed.");
+    } finally {
+      setControlBusy(false);
+    }
+  }, [loadControl]);
+
+  useEffect(() => {
+    void load();
+    void loadControl().catch((e) => setControlError(e instanceof Error ? e.message : "Control-plane status unavailable."));
+    const refreshTimer = window.setInterval(() => {
+      void load();
+      void loadControl().catch((e) => setControlError(e instanceof Error ? e.message : "Control-plane status unavailable."));
+    }, 60_000);
+    return () => window.clearInterval(refreshTimer);
+  }, [load, loadControl]);
 
   const targetProgress = Math.min(100, ((snapshot?.revenue30d ?? 0) / TARGET) * 100);
   const health = useMemo(() => {
     if (!snapshot) return { label: "SYNCING", tone: "muted" as const };
     if (snapshot.failedCaptures > 0) return { label: "EXCEPTION", tone: "red" as const };
     if (snapshot.blockedToday > 0) return { label: "GUARDED", tone: "gold" as const };
-    return { label: "OPERATING", tone: "green" as const };
+    return { label: "METRICS LOADED", tone: "green" as const };
   }, [snapshot]);
 
   if (!isSuperAdmin) {
@@ -184,12 +226,12 @@ function CEODashboard() {
           <div className="glass-card rounded-3xl p-5">
             <p className="text-[10px] uppercase tracking-[0.28em] text-gold">Autopilot state</p>
             <div className="mt-4 space-y-3">
-              <StateRow icon={<Activity size={14} />} label="Observe events" state="LIVE" />
-              <StateRow icon={<Film size={14} />} label="Create next content" state="LIVE" />
-              <StateRow icon={<UserPlus size={14} />} label="Recruit next host" state="LIVE" />
+              <StateRow icon={<Activity size={14} />} label="Observe events" state="TRACKED" />
+              <StateRow icon={<Film size={14} />} label="Create next content" state="TRACKED" />
+              <StateRow icon={<UserPlus size={14} />} label="Recruit next host" state="TRACKED" />
               <StateRow icon={<Megaphone size={14} />} label="Convert / publish" state="GATED" />
               <StateRow icon={<ShieldCheck size={14} />} label="Safety + financial gates" state="HARD GATE" />
-              <StateRow icon={<GitBranch size={14} />} label="Learn + repeat" state="LIVE" />
+              <StateRow icon={<GitBranch size={14} />} label="Learn + repeat" state="TRACKED" />
             </div>
           </div>
         </section>
@@ -213,6 +255,25 @@ function CEODashboard() {
           <ActionLane title="NETWORK GATE" icon={<ShieldCheck size={16} />} items={[["Recommendation source", "Verified only"], ["Supplier status", snapshot?.verifiedSuppliers ? "ACTIVE" : "NO VERIFIED PARTNER"], ["WhatsApp outbound", "PROVIDER GATED"]]} />
         </section>
 
+        <section className="mt-5 glass-card rounded-3xl border border-amber-400/20 p-5">
+          <div className="flex flex-col gap-4 lg:flex-row lg:items-center lg:justify-between">
+            <div className="max-w-3xl">
+              <p className="text-[10px] uppercase tracking-[0.28em] text-gold">CEO emergency control · ChatB2K</p>
+              <h2 className="mt-1 font-display text-xl font-semibold">Orchestration kill switch</h2>
+              <p className="mt-2 text-xs leading-5 text-muted-foreground">Canonical state: {controlState ? (controlState.kill_switch_enabled ? "PAUSED" : "RUNNING") : "NOT VERIFIED"} · last change {controlState?.kill_switched_at ? new Date(controlState.kill_switched_at).toLocaleString() : "not recorded"}.</p>
+              <p className="mt-2 text-[10px] leading-5 text-amber-200/80">Scope boundary: current source guards are present in ChatB2K orchestrator and agent router. BIGO capture/publish, media generation, Buffer publishing, content autopilot and payment/webhook flows have not yet been verified as honoring this flag. Do not treat this as a complete ecosystem-wide stop until those consumers are gated and tested.</p>
+              {controlState?.kill_switch_reason && <p className="mt-2 text-[10px] text-muted-foreground">Reason: {controlState.kill_switch_reason}</p>}
+              {controlError && <p className="mt-2 text-xs text-red-300"><AlertTriangle size={12} className="mr-1 inline" />{controlError}</p>}
+            </div>
+            <div className="flex shrink-0 flex-wrap items-center gap-2">
+              <span className={"rounded-full border px-3 py-2 text-[10px] font-bold " + (controlState?.kill_switch_enabled ? "border-red-500/40 bg-red-500/10 text-red-300" : "border-emerald-500/30 bg-emerald-500/10 text-emerald-300")}>{controlState ? (controlState.kill_switch_enabled ? "ORCHESTRATION PAUSED" : "ORCHESTRATION RUNNING") : "STATE UNKNOWN"}</span>
+              {controlState?.kill_switch_enabled
+                ? <button type="button" onClick={() => void changeKillSwitch(false)} disabled={controlBusy || !controlState} className="rounded-xl border border-emerald-500/30 bg-emerald-500/10 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-emerald-200 disabled:opacity-50">{controlBusy ? "Updating…" : "Resume orchestration"}</button>
+                : <button type="button" onClick={() => void changeKillSwitch(true)} disabled={controlBusy || !controlState} className="rounded-xl border border-red-500/30 bg-red-500/10 px-4 py-3 text-[10px] font-bold uppercase tracking-wider text-red-200 disabled:opacity-50">{controlBusy ? "Updating…" : "Pause orchestration"}</button>}
+            </div>
+          </div>
+        </section>
+
         <section className="mt-5 glass-card rounded-3xl p-5">
           <div className="flex items-center justify-between gap-3">
             <div><p className="text-[10px] uppercase tracking-[0.28em] text-gold">Exception control</p><h2 className="mt-1 font-display text-xl font-semibold">What needs CEO attention?</h2></div>
@@ -227,7 +288,7 @@ function CEODashboard() {
         </section>
 
         <footer className="mt-5 flex flex-col gap-2 border-t border-border pt-4 text-[9px] font-mono uppercase tracking-wider text-muted-foreground sm:flex-row sm:items-center sm:justify-between">
-          <span>Reso-Dash · CEO growth control surface</span>
+          <span>Reso-Dash · CEO growth control surface · auto-refresh 60s</span>
           <span>Production source: resonance-fitness · no secrets exposed</span>
         </footer>
       </div>
