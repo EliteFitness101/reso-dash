@@ -1,7 +1,7 @@
 import { useEffect, useState, type FormEvent } from "react";
 import { supabase } from "@/lib/supabase-browser";
 
-type Factor = { id: string; status: string; factor_type: string };
+type Factor = { id: string; status: string; factor_type: string; friendly_name?: string };
 
 export function CEOAccessMFA() {
   const [loading, setLoading] = useState(true);
@@ -28,15 +28,23 @@ export function CEOAccessMFA() {
         setError(factorError.message);
       } else {
         const factors = (data?.totp ?? []) as Factor[];
-        const verified = factors.find((factor) => factor.status === "verified");
-        if (verified) {
-          setFactorId(verified.id);
+        const existing = factors.find((factor) =>
+          factor.friendly_name === "ResoFit CEO authenticator" && factor.status === "verified"
+        ) ?? factors.find((factor) => factor.status === "verified")
+          ?? factors.find((factor) =>
+            factor.friendly_name === "ResoFit CEO authenticator" && factor.status === "unverified"
+          ) ?? factors.find((factor) => factor.status === "unverified");
+
+        if (existing) {
+          // Reuse the account's existing factor. Never enroll a duplicate when a
+          // pending TOTP factor already exists for this user.
+          setFactorId(existing.id);
           setMode("verify");
+          setNotice(existing.status === "unverified"
+            ? "Existing authenticator setup found. Enter the current six-digit code from the authenticator app already paired with this account to finish verification."
+            : "Existing verified authenticator found. Enter its current six-digit code to raise this session to AAL2.");
         } else {
           setMode("setup");
-          if (factors.some((factor) => factor.status === "unverified")) {
-            setNotice("An unfinished authenticator setup exists. Continue with its original authenticator if available. If it is lost, contact the account administrator to reset the unverified factor.");
-          }
         }
       }
       setLoading(false);
